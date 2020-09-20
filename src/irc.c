@@ -76,6 +76,8 @@ irc_connect (char * server, char * port) {
     if ( fd < 0 ) {
         errsv = errno;
         fprintf(stderr, "socket() failed: %s\n", strerror(errsv));
+
+        freeaddrinfo(res);
         return -1;
     }
 
@@ -86,7 +88,7 @@ irc_connect (char * server, char * port) {
         fprintf(stderr, "connect() failed: %s\n", strerror(errsv));
 
         close(fd);
-
+        freeaddrinfo(res);
         return -1;
     }
 
@@ -99,7 +101,6 @@ irc_connect (char * server, char * port) {
         fprintf(stderr, "fcntl() failed: %s\n", strerror(errsv));
 
         close(fd);
-
         return -1;
     }
 
