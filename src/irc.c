@@ -53,6 +53,39 @@ irc_send (signed filedes, enum irc_command cmd, ...) {
 }
 
 signed
+irc_authenticate (signed filedes, char * nick, char * ident, char * gecos, char * pass) {
+
+    signed cmd_status = EXIT_SUCCESS;
+    if ( pass ) {
+        cmd_status = irc_send(filedes, PASS, nick);
+        if ( cmd_status != EXIT_SUCCESS ) {
+            return cmd_status;
+        }
+    }
+
+    cmd_status = irc_send(filedes, NICK, nick);
+    if ( cmd_status != EXIT_SUCCESS ) {
+        return cmd_status;
+    }
+
+    return irc_send(filedes, USER, ident ? ident : nick, gecos ? gecos : nick);
+}
+
+signed
+irc_joinall(signed filedes, size_t num_channels, char * channels[]) {
+
+    signed cmd_status = EXIT_SUCCESS;
+    for ( size_t i = 0; i < num_channels; ++i ) {
+        cmd_status = irc_send(filedes, JOIN, channels[i]);
+        if ( cmd_status != EXIT_SUCCESS ) {
+            return cmd_status;
+        }
+    }
+
+    return cmd_status;
+}
+
+signed
 irc_connect (char * server, char * port) {
 
     memset(servername, 0, IRC_MESSAGE_MAX);

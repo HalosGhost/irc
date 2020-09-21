@@ -24,6 +24,7 @@
     X(NICK, "%s") \
     X(NOTICE, "%s :%s") \
     X(PART, "%s") \
+    X(PASS, "%s") \
     X(PONG, "%s") \
     X(PRIVMSG, "%s :%s") \
     X(TOPIC, "%s %s") \
@@ -55,6 +56,12 @@ irc_cmdf (enum irc_command, char *, va_list);
 
 signed
 irc_send (signed, enum irc_command, ...);
+
+signed
+irc_authenticate (signed, char *, char *, char *, char *);
+
+signed
+irc_joinall(signed, size_t, char *[]);
 
 signed
 irc_connect (char *, char *);

@@ -3,6 +3,15 @@
 signed
 main (void) {
 
+    initscr(); noecho(); cbreak(); keypad(stdscr, true);
+    mvhline(LINES - 2, 0, 0, COLS);
+    refresh();
+    WINDOW * buffer = newwin(LINES - 2, 0, 0, 0);
+    WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
+    scrollok(buffer, true);
+
+    signal(SIGINT, signal_handler);
+
     signed fd = irc_connect(server, port);
     if ( fd < 0 ) {
         return EXIT_FAILURE;
@@ -12,27 +21,11 @@ main (void) {
         { .fd = fd, .events = POLLIN }
     };
 
-    signed cmd_status;
+    signed cmd_status = EXIT_SUCCESS;
 
-    initscr(); noecho(); cbreak(); keypad(stdscr, true);
-    mvhline(LINES - 2, 0, 0, COLS);
-    refresh();
-    WINDOW * buffer = newwin(LINES - 2, 0, 0, 0);
-    WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
-    scrollok(buffer, true);
-
-
-    signal(SIGINT, signal_handler);
-
-    cmd_status = irc_send(fd, NICK, nick);
-    if ( cmd_status == EXIT_FAILURE ) {
-        exit_status = EXIT_FAILURE;
-        goto cleanup;
-    }
-
-    cmd_status = irc_send(fd, USER, ident ? ident : nick, gecos ? gecos : nick);
-    if ( cmd_status == EXIT_FAILURE ) {
-        exit_status = EXIT_FAILURE;
+    cmd_status = irc_authenticate(fd, nick, ident, gecos, pass);
+    if ( cmd_status != EXIT_SUCCESS ) {
+        exit_status = cmd_status;
         goto cleanup;
     }
 
@@ -81,12 +74,7 @@ main (void) {
             if ( !*servername ) {
                 sscanf(msg_buf, "%s NOTICE", servername);
             } else if ( !joined ) {
-                size_t len = sizeof(channels) / sizeof(*channels);
-                size_t i = 0;
-                while ( i < len ) {
-                    irc_send(fd, JOIN, channels[i++]);
-                }
-
+                cmd_status = irc_joinall(fd, (sizeof channels / sizeof *channels), channels);
                 joined = true;
             }
 

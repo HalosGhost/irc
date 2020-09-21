@@ -17,6 +17,7 @@ static volatile sig_atomic_t caught_signum;
 
 static char * server = "chat.freenode.net";
 static char * port = "6667";
+static char * pass = NULL;
 static char * nick = "guest9899";
 static char * ident = "guest9899";
 static char * gecos = "a new client";
