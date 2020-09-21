@@ -14,9 +14,13 @@ main (void) {
 
     signed cmd_status;
 
-    initscr(); noecho(); cbreak(); curs_set(0); keypad(stdscr, true);
-    scrollok(stdscr, true);
+    initscr(); noecho(); cbreak(); keypad(stdscr, true);
+    mvhline(LINES - 2, 0, 0, COLS);
     refresh();
+    WINDOW * buffer = newwin(LINES - 2, 0, 0, 0);
+    WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
+    scrollok(buffer, true);
+
 
     signal(SIGINT, signal_handler);
 
@@ -54,6 +58,11 @@ main (void) {
             signed errsv = errno = 0;
             ssize_t bytes_read = read(fd, msg_buf, IRC_MESSAGE_MAX);
 
+            // prevent \r\n from clearing the line
+            for ( size_t i = 0; i < IRC_MESSAGE_MAX; ++i ) {
+                if ( msg_buf[i] == '\r' ) { msg_buf[i] = ' '; }
+            }
+
             if ( bytes_read == -1 ) {
                 errsv = errno;
                 if ( errsv == EAGAIN || errsv == EWOULDBLOCK ) {
@@ -81,14 +90,17 @@ main (void) {
                 joined = true;
             }
 
-            fputs(msg_buf, stdout);
+            wprintw(buffer, "%s", msg_buf);
             handle_server_message(fd, msg_buf);
+            wrefresh(buffer);
         }
 
         errno = 0;
     }
 
     cleanup:
+        if ( buffer ) { delwin(buffer); }
+        if ( inputln ) { delwin(inputln); }
         if ( fd > 0 ) { close(fd); }
         endwin();
 
