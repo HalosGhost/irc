@@ -3,6 +3,12 @@
 signed
 main (void) {
 
+    FILE * logfile = fopen(logpath, "a");
+    if ( !logfile ) {
+        fprintf(stderr, "fopen() failed to open log file (%s): %s\n", logpath, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
     initscr(); noecho(); cbreak(); keypad(stdscr, true);
     mvhline(LINES - 2, 0, 0, COLS);
     refresh();
@@ -12,7 +18,7 @@ main (void) {
 
     signal(SIGINT, signal_handler);
 
-    signed fd = irc_connect(server, port);
+    signed fd = irc_connect(logfile, server, port);
     if ( fd < 0 ) {
         return EXIT_FAILURE;
     }
@@ -23,7 +29,7 @@ main (void) {
 
     signed cmd_status = EXIT_SUCCESS;
 
-    cmd_status = irc_authenticate(fd, nick, ident, gecos, pass);
+    cmd_status = irc_authenticate(logfile, fd, nick, ident, gecos, pass);
     if ( cmd_status != EXIT_SUCCESS ) {
         exit_status = cmd_status;
         goto cleanup;
@@ -61,12 +67,12 @@ main (void) {
                 if ( errsv == EAGAIN || errsv == EWOULDBLOCK ) {
                     continue;
                 } else {
-                    fprintf(stderr, "read() failed: %s\n", strerror(errsv));
+                    fprintf(logfile, "read() failed: %s\n", strerror(errsv));
                     exit_status = EXIT_FAILURE;
                     goto cleanup;
                 }
             } else if ( !bytes_read ) {
-                fputs("connection closed\n", stderr);
+                fputs("connection closed\n", logfile);
                 goto cleanup;
             }
 
@@ -74,12 +80,12 @@ main (void) {
             if ( !*servername ) {
                 sscanf(msg_buf, "%s NOTICE", servername);
             } else if ( !joined ) {
-                cmd_status = irc_joinall(fd, (sizeof channels / sizeof *channels), channels);
+                cmd_status = irc_joinall(logfile, fd, (sizeof channels / sizeof *channels), channels);
                 joined = true;
             }
 
             wprintw(buffer, "%s", msg_buf);
-            handle_server_message(fd, msg_buf);
+            handle_server_message(logfile, fd, msg_buf);
             wrefresh(buffer);
         }
 
@@ -90,18 +96,19 @@ main (void) {
         if ( buffer ) { delwin(buffer); }
         if ( inputln ) { delwin(inputln); }
         if ( fd > 0 ) { close(fd); }
+        if ( logfile ) { fclose(logfile); }
         endwin();
 
         return EXIT_SUCCESS;
 }
 
 signed
-handle_server_message (signed filedes, char * message) {
+handle_server_message (FILE * logfile, signed filedes, char * message) {
 
     signed cmd_status;
 
     if ( !strncmp(message, "PING", 4) ) {
-        cmd_status = irc_send(filedes, PONG, servername);
+        cmd_status = irc_send(logfile, filedes, PONG, servername);
         if ( cmd_status == EXIT_FAILURE ) {
             return EXIT_FAILURE;
         }

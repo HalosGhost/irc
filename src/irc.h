@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <assert.h>
 
 #define IRC_LINE_ENDING "\r\n"
 #define IRC_MESSAGE_MAX 512
@@ -55,16 +56,16 @@ signed
 irc_cmdf (enum irc_command, char *, va_list);
 
 signed
-irc_send (signed, enum irc_command, ...);
+irc_send (FILE *, signed, enum irc_command, ...);
 
 signed
-irc_authenticate (signed, char *, char *, char *, char *);
+irc_authenticate (FILE *, signed, char *, char *, char *, char *);
 
 signed
-irc_joinall(signed, size_t, char *[]);
+irc_joinall(FILE *, signed, size_t, char *[]);
 
 signed
-irc_connect (char *, char *);
+irc_connect (FILE *, char *, char *);
 
 #endif
 

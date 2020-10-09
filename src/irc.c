@@ -23,7 +23,9 @@ irc_cmdf (enum irc_command cmd, char * str, va_list args) {
 }
 
 signed
-irc_send (signed filedes, enum irc_command cmd, ...) {
+irc_send (FILE * logfile, signed filedes, enum irc_command cmd, ...) {
+
+    assert(logfile);
 
     va_list args;
     va_start(args, cmd);
@@ -34,14 +36,14 @@ irc_send (signed filedes, enum irc_command cmd, ...) {
     signed length = irc_cmdf(cmd, msg_buf, args);
 
     #if !defined(NDEBUG)
-        fprintf(stderr, "sending %s", msg_buf);
+        fprintf(logfile, "sending %s", msg_buf);
     #endif
 
     errsv = errno = 0;
     ssize_t bytes_written = write(filedes, msg_buf, (size_t )length);
     if ( bytes_written < 0 ) {
         errsv = errno;
-        fprintf(stderr, "write() failed: %s\n", strerror(errsv));
+        fprintf(logfile, "write() failed: %s\n", strerror(errsv));
         return EXIT_FAILURE;
     }
 
@@ -53,30 +55,30 @@ irc_send (signed filedes, enum irc_command cmd, ...) {
 }
 
 signed
-irc_authenticate (signed filedes, char * nick, char * ident, char * gecos, char * pass) {
+irc_authenticate (FILE * logfile, signed filedes, char * nick, char * ident, char * gecos, char * pass) {
 
     signed cmd_status = EXIT_SUCCESS;
     if ( pass ) {
-        cmd_status = irc_send(filedes, PASS, nick);
+        cmd_status = irc_send(logfile, filedes, PASS, nick);
         if ( cmd_status != EXIT_SUCCESS ) {
             return cmd_status;
         }
     }
 
-    cmd_status = irc_send(filedes, NICK, nick);
+    cmd_status = irc_send(logfile, filedes, NICK, nick);
     if ( cmd_status != EXIT_SUCCESS ) {
         return cmd_status;
     }
 
-    return irc_send(filedes, USER, ident ? ident : nick, gecos ? gecos : nick);
+    return irc_send(logfile, filedes, USER, ident ? ident : nick, gecos ? gecos : nick);
 }
 
 signed
-irc_joinall(signed filedes, size_t num_channels, char * channels[]) {
+irc_joinall(FILE * logfile, signed filedes, size_t num_channels, char * channels[]) {
 
     signed cmd_status = EXIT_SUCCESS;
     for ( size_t i = 0; i < num_channels; ++i ) {
-        cmd_status = irc_send(filedes, JOIN, channels[i]);
+        cmd_status = irc_send(logfile, filedes, JOIN, channels[i]);
         if ( cmd_status != EXIT_SUCCESS ) {
             return cmd_status;
         }
@@ -86,7 +88,9 @@ irc_joinall(signed filedes, size_t num_channels, char * channels[]) {
 }
 
 signed
-irc_connect (char * server, char * port) {
+irc_connect (FILE * logfile, char * server, char * port) {
+
+    assert(logfile);
 
     memset(servername, 0, IRC_MESSAGE_MAX);
 
@@ -100,7 +104,7 @@ irc_connect (char * server, char * port) {
     
     signed status = getaddrinfo(server, port, &hints, &res);
     if ( status ) {
-        fprintf(stderr, "getaddrinfo() failed: %s\n", gai_strerror(status));
+        fprintf(logfile, "getaddrinfo() failed: %s\n", gai_strerror(status));
         return EXIT_FAILURE;
     }
 
@@ -108,7 +112,7 @@ irc_connect (char * server, char * port) {
     signed fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if ( fd < 0 ) {
         errsv = errno;
-        fprintf(stderr, "socket() failed: %s\n", strerror(errsv));
+        fprintf(logfile, "socket() failed: %s\n", strerror(errsv));
 
         freeaddrinfo(res);
         return -1;
@@ -118,7 +122,7 @@ irc_connect (char * server, char * port) {
     status = connect(fd, res->ai_addr, res->ai_addrlen);
     if ( status < 0 ) {
         errsv = errno;
-        fprintf(stderr, "connect() failed: %s\n", strerror(errsv));
+        fprintf(logfile, "connect() failed: %s\n", strerror(errsv));
 
         close(fd);
         freeaddrinfo(res);
@@ -131,7 +135,7 @@ irc_connect (char * server, char * port) {
     status = fcntl(fd, F_SETFL, O_NONBLOCK);
     if ( status < 0 ) {
         errsv = errno;
-        fprintf(stderr, "fcntl() failed: %s\n", strerror(errsv));
+        fprintf(logfile, "fcntl() failed: %s\n", strerror(errsv));
 
         close(fd);
         return -1;

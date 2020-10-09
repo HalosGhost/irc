@@ -22,12 +22,14 @@ static char * nick = "guest9899";
 static char * ident = "guest9899";
 static char * gecos = "a new client";
 
+static char * logpath = "./log";
+
 static char * channels [] = {
     "##hgtest"
 };
 
 signed
-handle_server_message (signed, char *);
+handle_server_message (FILE *, signed, char *);
 
 void
 signal_handler (signed);
