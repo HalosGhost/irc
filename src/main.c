@@ -9,7 +9,12 @@ main (void) {
         return EXIT_FAILURE;
     }
 
-    initscr(); noecho(); cbreak(); keypad(stdscr, true);
+    initscr();
+    nodelay(stdscr, true);
+    noecho();
+    cbreak();
+    keypad(stdscr, true);
+
     mvhline(LINES - 2, 0, 0, COLS);
     refresh();
     WINDOW * buffer = newwin(LINES - 2, 0, 0, 0);
@@ -35,7 +40,57 @@ main (void) {
         goto cleanup;
     }
 
-    for ( signed pres = poll(pfd, 1, -1); pres; pres = poll(pfd, 1, -1) ) {
+    bool running = true;
+    do {
+        signed ch = getch();
+        static size_t user_entry_len = 0;
+        if ( ch != ERR ) {
+            werase(inputln);
+
+            switch ( ch ) {
+                case '\n':
+                    if ( user_entry_len ) {
+                        enum cmd_builtin st = handle_local_message(logfile, fd, user_entry);
+                        switch ( st ) {
+                            case C_QUIT:
+                                running = false;
+                                continue;
+
+                            case C_MESSAGE:
+                                wprintw(buffer, "%s\n", user_entry);
+                                wnoutrefresh(buffer);
+                                break;
+
+                            default:;
+                        }
+                        memset(user_entry, 0, IRC_MESSAGE_MAX);
+                        user_entry_len = 0;
+                    }
+                    break;
+
+                case 127:
+                    if ( user_entry_len ) {
+                        user_entry[--user_entry_len] = 0;
+                    }
+                    break;
+
+                default:
+                    if ( user_entry_len < 512 ) {
+                        user_entry[user_entry_len++] = ch;
+                    }
+                    break;
+            }
+
+            mvwprintw(inputln, 0, 0, "%s", user_entry);
+            wnoutrefresh(inputln);
+        }
+
+        signed pres = poll(pfd, 1, 0);
+        if ( pres < 0 ) {
+            running = false;
+            continue;
+        }
+
         if ( exit_status == EXIT_FAILURE ) {
             goto cleanup;
         }
@@ -85,12 +140,14 @@ main (void) {
             }
 
             wprintw(buffer, "%s", msg_buf);
+            fprintf(logfile, "%s", msg_buf);
             handle_server_message(logfile, fd, msg_buf);
-            wrefresh(buffer);
+            wnoutrefresh(buffer);
         }
 
+        doupdate();
         errno = 0;
-    }
+    } while ( running );
 
     cleanup:
         if ( buffer ) { delwin(buffer); }
@@ -115,6 +172,22 @@ handle_server_message (FILE * logfile, signed filedes, char * message) {
     }
 
     return EXIT_SUCCESS;
+}
+
+enum cmd_builtin
+handle_local_message (FILE * logfile, signed filedes, char * message) {
+
+    signed cmd_status;
+    if ( message[0] == '/' && message[1] != '/' ) {
+        if ( !strcmp(message + 1, "quit") ) {
+            return C_QUIT;
+        }
+    } else {
+        cmd_status = irc_send(logfile, filedes, PRIVMSG, "##hgtest", message + (message[0] == '/'));
+        return cmd_status == EXIT_SUCCESS ? C_MESSAGE : C_UNKNOWN;
+    }
+
+    return C_UNKNOWN;
 }
 
 void

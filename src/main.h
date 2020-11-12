@@ -11,6 +11,7 @@
 #include <stdbool.h>
 
 #include "irc.h"
+#include "cmd.h"
 
 static volatile sig_atomic_t exit_status = EXIT_SUCCESS;
 static volatile sig_atomic_t caught_signum;
@@ -28,8 +29,13 @@ static char * channels [] = {
     "##hgtest"
 };
 
+static char user_entry [IRC_MESSAGE_MAX + 1];
+
 signed
 handle_server_message (FILE *, signed, char *);
+
+enum cmd_builtin
+handle_local_message (FILE *, signed, char *);
 
 void
 signal_handler (signed);
