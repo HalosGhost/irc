@@ -143,6 +143,8 @@ main (void) {
             fprintf(logfile, "%s", msg_buf);
             handle_server_message(logfile, fd, msg_buf);
             wnoutrefresh(buffer);
+            wmove(inputln, 0, user_entry_len);
+            wnoutrefresh(inputln);
         }
 
         doupdate();
@@ -183,7 +185,7 @@ handle_local_message (FILE * logfile, signed filedes, char * message) {
             return C_QUIT;
         }
     } else {
-        cmd_status = irc_send(logfile, filedes, PRIVMSG, "##hgtest", message + (message[0] == '/'));
+        cmd_status = irc_send(logfile, filedes, PRIVMSG, channels[0], message + (message[0] == '/'));
         return cmd_status == EXIT_SUCCESS ? C_MESSAGE : C_UNKNOWN;
     }
 
