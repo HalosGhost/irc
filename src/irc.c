@@ -59,7 +59,7 @@ irc_authenticate (FILE * logfile, signed filedes, char * nick, char * ident, cha
 
     signed cmd_status = EXIT_SUCCESS;
     if ( pass ) {
-        cmd_status = irc_send(logfile, filedes, PASS, nick);
+        cmd_status = irc_send(logfile, filedes, PASS, pass);
         if ( cmd_status != EXIT_SUCCESS ) {
             return cmd_status;
         }
