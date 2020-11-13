@@ -194,6 +194,5 @@ void
 signal_handler (signed signum) {
 
     caught_signum = (sig_atomic_t )signum;
-    exit_status = EXIT_FAILURE;
 }
 
