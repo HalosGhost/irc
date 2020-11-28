@@ -25,7 +25,8 @@ main (void) {
 
     signed fd = irc_connect(logfile, server, port);
     if ( fd < 0 ) {
-        return EXIT_FAILURE;
+        exit_status = EXIT_FAILURE;
+        goto cleanup;
     }
 
     struct pollfd pfd[1] = {
@@ -112,11 +113,6 @@ main (void) {
             signed errsv = errno = 0;
             ssize_t bytes_read = read(fd, msg_buf, IRC_MESSAGE_MAX);
 
-            // prevent \r\n from clearing the line
-            for ( size_t i = 0; i < IRC_MESSAGE_MAX; ++i ) {
-                if ( msg_buf[i] == '\r' ) { msg_buf[i] = ' '; }
-            }
-
             if ( bytes_read == -1 ) {
                 errsv = errno;
                 if ( errsv == EAGAIN || errsv == EWOULDBLOCK ) {
@@ -139,6 +135,11 @@ main (void) {
                 joined = true;
             }
 
+            // prevent \r\n from clearing the line
+            for ( size_t i = 0; i < IRC_MESSAGE_MAX; ++i ) {
+                if ( msg_buf[i] == '\r' ) { msg_buf[i] = ' '; }
+            }
+
             wprintw(buffer, "%s", msg_buf);
             fprintf(logfile, "%s", msg_buf);
             handle_server_message(logfile, fd, msg_buf);
@@ -158,7 +159,7 @@ main (void) {
         if ( logfile ) { fclose(logfile); }
         endwin();
 
-        return EXIT_SUCCESS;
+        return exit_status;
 }
 
 signed
