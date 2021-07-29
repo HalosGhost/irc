@@ -23,7 +23,7 @@ irc_cmdf (enum irc_command cmd, char * str, va_list args) {
 }
 
 signed
-irc_send (FILE * logfile, signed filedes, enum irc_command cmd, ...) {
+irc_send (FILE * logfile, BIO * bio, enum irc_command cmd, ...) {
 
     assert(logfile);
 
@@ -33,17 +33,13 @@ irc_send (FILE * logfile, signed filedes, enum irc_command cmd, ...) {
     signed errsv;
 
     static char msg_buf [IRC_MESSAGE_MAX + 1];
-    signed length = irc_cmdf(cmd, msg_buf, args);
+    irc_cmdf(cmd, msg_buf, args);
 
-    #if !defined(NDEBUG)
-        fprintf(logfile, "sending %s", msg_buf);
-    #endif
+    fprintf(logfile, "%s", msg_buf);
 
-    errsv = errno = 0;
-    ssize_t bytes_written = write(filedes, msg_buf, (size_t )length);
+    ssize_t bytes_written = BIO_printf(bio, "%s", msg_buf);
     if ( bytes_written < 0 ) {
-        errsv = errno;
-        fprintf(logfile, "write() failed: %s\n", strerror(errsv));
+        fprintf(logfile, "%s() failed\n", __func__);
         return EXIT_FAILURE;
     }
 
@@ -55,30 +51,30 @@ irc_send (FILE * logfile, signed filedes, enum irc_command cmd, ...) {
 }
 
 signed
-irc_authenticate (FILE * logfile, signed filedes, char * nick, char * ident, char * gecos, char * pass) {
+irc_authenticate (FILE * logfile, BIO * bio, char * nick, char * ident, char * gecos, char * pass) {
 
     signed cmd_status = EXIT_SUCCESS;
     if ( pass ) {
-        cmd_status = irc_send(logfile, filedes, PASS, pass);
+        cmd_status = irc_send(logfile, bio, PASS, pass);
         if ( cmd_status != EXIT_SUCCESS ) {
             return cmd_status;
         }
     }
 
-    cmd_status = irc_send(logfile, filedes, NICK, nick);
+    cmd_status = irc_send(logfile, bio, NICK, nick);
     if ( cmd_status != EXIT_SUCCESS ) {
         return cmd_status;
     }
 
-    return irc_send(logfile, filedes, USER, ident ? ident : nick, gecos ? gecos : nick);
+    return irc_send(logfile, bio, USER, ident ? ident : nick, gecos ? gecos : nick);
 }
 
 signed
-irc_joinall(FILE * logfile, signed filedes, size_t num_channels, char * channels[]) {
+irc_joinall(FILE * logfile, BIO * bio, size_t num_channels, char * channels[]) {
 
     signed cmd_status = EXIT_SUCCESS;
     for ( size_t i = 0; i < num_channels; ++i ) {
-        cmd_status = irc_send(logfile, filedes, JOIN, channels[i]);
+        cmd_status = irc_send(logfile, bio, JOIN, channels[i]);
         if ( cmd_status != EXIT_SUCCESS ) {
             return cmd_status;
         }
@@ -87,59 +83,80 @@ irc_joinall(FILE * logfile, signed filedes, size_t num_channels, char * channels
     return cmd_status;
 }
 
-signed
+BIO *
 irc_connect (FILE * logfile, char * server, char * port) {
 
     assert(logfile);
 
-    memset(servername, 0, IRC_MESSAGE_MAX);
+//    struct addrinfo hints;
+//    struct addrinfo * res;
+//
+//    memset(&hints, 0, sizeof(struct addrinfo));
+//    hints.ai_family = AF_UNSPEC;
+//    hints.ai_socktype = SOCK_STREAM;
+//    hints.ai_flags = AI_PASSIVE;
+//    
+//    signed status = getaddrinfo(server, port, &hints, &res);
+//    if ( status ) {
+//        fprintf(logfile, "getaddrinfo() failed: %s\n", gai_strerror(status));
+//        return EXIT_FAILURE;
+//    }
+//
+//    signed errsv = errno = 0;
+//    signed fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+//    if ( fd < 0 ) {
+//        errsv = errno;
+//        fprintf(logfile, "socket() failed: %s\n", strerror(errsv));
+//
+//        freeaddrinfo(res);
+//        return -1;
+//    }
 
-    struct addrinfo hints;
-    struct addrinfo * res;
-
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    
-    signed status = getaddrinfo(server, port, &hints, &res);
-    if ( status ) {
-        fprintf(logfile, "getaddrinfo() failed: %s\n", gai_strerror(status));
-        return EXIT_FAILURE;
+    BIO * bio = BIO_new_connect(server);
+    if ( !bio ) {
+        fprintf(logfile, "BIO_new_connect() failed\n");
+        return NULL;
     }
 
-    signed errsv = errno = 0;
-    signed fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if ( fd < 0 ) {
-        errsv = errno;
-        fprintf(logfile, "socket() failed: %s\n", strerror(errsv));
+    BIO_set_conn_port(bio, port);
+    //BIO_set_conn_ip_family(bio, AF_UNSPEC);
+    BIO_set_nbio(bio, 1);
+    signed rv = 0;
+    do {
+        sleep(1);
+        rv = BIO_do_connect(bio);
+    } while ( rv < 1 && BIO_should_retry(bio) );
 
-        freeaddrinfo(res);
-        return -1;
+    if ( rv < 1 ) {
+        unsigned long long errsv = ERR_get_error();
+        fprintf(logfile, "BIO_do_connect() failed: %s\n", ERR_error_string(errsv, NULL));
+        return NULL;
     }
 
-    errsv = errno = 0;
-    status = connect(fd, res->ai_addr, res->ai_addrlen);
-    if ( status < 0 ) {
-        errsv = errno;
-        fprintf(logfile, "connect() failed: %s\n", strerror(errsv));
-
-        close(fd);
-        freeaddrinfo(res);
-        return -1;
-    }
-
-    freeaddrinfo(res);
-
-    errsv = errno = 0;
-    status = fcntl(fd, F_SETFL, O_NONBLOCK);
-    if ( status < 0 ) {
-        errsv = errno;
-        fprintf(logfile, "fcntl() failed: %s\n", strerror(errsv));
-
-        close(fd);
-        return -1;
-    }
-
-    return fd;
+    return bio;
+//
+//    errsv = errno = 0;
+//    status = connect(fd, res->ai_addr, res->ai_addrlen);
+//    if ( status < 0 ) {
+//        errsv = errno;
+//        fprintf(logfile, "connect() failed: %s\n", strerror(errsv));
+//
+//        close(fd);
+//        freeaddrinfo(res);
+//        return -1;
+//    }
+//
+//    freeaddrinfo(res);
+//
+//    errsv = errno = 0;
+//    status = fcntl(fd, F_SETFL, O_NONBLOCK);
+//    if ( status < 0 ) {
+//        errsv = errno;
+//        fprintf(logfile, "fcntl() failed: %s\n", strerror(errsv));
+//
+//        close(fd);
+//        return -1;
+//    }
+//
+//    return fd;
 }

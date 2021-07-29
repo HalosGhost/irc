@@ -2,7 +2,7 @@ PROGNM = irc
 
 CC ?= gcc
 CFLAGS ?= -O2 -fPIE -flto -fstack-protector-strong --param=ssp-buffer-size=1 -Wno-reserved-id-macro -Wall -Wextra -Wpedantic -Werror -std=gnu18
-LDFLAGS ?= $(shell pkg-config --libs-only-l ncurses)
+LDFLAGS ?= $(shell pkg-config --libs-only-l ncurses openssl)
 VER = $(shell git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g')
 FMFLAGS = -wp -then -wp -wp-rte
 SOURCES ?= $(wildcard src/*.c)

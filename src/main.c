@@ -23,7 +23,17 @@ main (void) {
 
     signal(SIGINT, signal_handler);
 
-    signed fd = irc_connect(logfile, server, port);
+    //SSL_load_error_strings();
+    ERR_load_BIO_strings();
+
+    //signed fd = irc_connect(logfile, freenode.host, freenode.port);
+    BIO * bio = irc_connect(logfile, freenode.host, freenode.port);
+    if ( !bio ) {
+        exit_status = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+    signed fd = BIO_get_fd(bio, NULL);
     if ( fd < 0 ) {
         exit_status = EXIT_FAILURE;
         goto cleanup;
@@ -35,7 +45,7 @@ main (void) {
 
     signed cmd_status = EXIT_SUCCESS;
 
-    cmd_status = irc_authenticate(logfile, fd, nick, ident, gecos, pass);
+    cmd_status = irc_authenticate(logfile, bio, freenode.nick, freenode.ident, freenode.gecos, freenode.pass);
     if ( cmd_status != EXIT_SUCCESS ) {
         exit_status = cmd_status;
         goto cleanup;
@@ -51,7 +61,7 @@ main (void) {
             switch ( ch ) {
                 case '\n':
                     if ( user_entry_len ) {
-                        enum cmd_builtin st = handle_local_message(logfile, fd, user_entry);
+                        enum cmd_builtin st = handle_local_message(logfile, bio, user_entry);
                         switch ( st ) {
                             case C_QUIT:
                                 running = false;
@@ -110,20 +120,18 @@ main (void) {
         if ( pfd[0].revents & POLLIN ) {
             memset(msg_buf, 0, IRC_MESSAGE_MAX);
 
-            signed errsv = errno = 0;
-            ssize_t bytes_read = read(fd, msg_buf, IRC_MESSAGE_MAX);
-
-            if ( bytes_read == -1 ) {
-                errsv = errno;
-                if ( errsv == EAGAIN || errsv == EWOULDBLOCK ) {
+            ssize_t bytes_read = BIO_gets(bio, msg_buf, IRC_MESSAGE_MAX);
+            if ( !bytes_read ) {
+                continue;
+            } else if ( bytes_read < 0 ) {
+                if ( BIO_should_retry(bio) ) {
                     continue;
-                } else {
-                    fprintf(logfile, "read() failed: %s\n", strerror(errsv));
-                    exit_status = EXIT_FAILURE;
-                    goto cleanup;
                 }
-            } else if ( !bytes_read ) {
-                fputs("connection closed\n", logfile);
+
+                unsigned long long errsv = ERR_get_error();
+
+                fprintf(logfile, "BIO_gets() failed: %s\n", ERR_error_string(errsv, NULL));
+                exit_status = EXIT_FAILURE;
                 goto cleanup;
             }
 
@@ -131,7 +139,7 @@ main (void) {
             if ( !*servername ) {
                 sscanf(msg_buf, "%s NOTICE", servername);
             } else if ( !joined ) {
-                cmd_status = irc_joinall(logfile, fd, (sizeof channels / sizeof *channels), channels);
+                cmd_status = irc_joinall(logfile, bio, (sizeof channels / sizeof *channels), channels);
                 joined = true;
             }
 
@@ -142,7 +150,7 @@ main (void) {
 
             wprintw(buffer, "%s", msg_buf);
             fprintf(logfile, "%s", msg_buf);
-            handle_server_message(logfile, fd, msg_buf);
+            handle_server_message(logfile, bio, msg_buf);
             wnoutrefresh(buffer);
             wmove(inputln, 0, user_entry_len);
             wnoutrefresh(inputln);
@@ -155,6 +163,7 @@ main (void) {
     cleanup:
         if ( buffer ) { delwin(buffer); }
         if ( inputln ) { delwin(inputln); }
+        if ( bio ) { BIO_free(bio); }
         if ( fd > 0 ) { close(fd); }
         if ( logfile ) { fclose(logfile); }
         endwin();
@@ -163,12 +172,12 @@ main (void) {
 }
 
 signed
-handle_server_message (FILE * logfile, signed filedes, char * message) {
+handle_server_message (FILE * logfile, BIO * bio, char * message) {
 
     signed cmd_status;
 
     if ( !strncmp(message, "PING", 4) ) {
-        cmd_status = irc_send(logfile, filedes, PONG, servername);
+        cmd_status = irc_send(logfile, bio, PONG, servername);
         if ( cmd_status == EXIT_FAILURE ) {
             return EXIT_FAILURE;
         }
@@ -178,7 +187,7 @@ handle_server_message (FILE * logfile, signed filedes, char * message) {
 }
 
 enum cmd_builtin
-handle_local_message (FILE * logfile, signed filedes, char * message) {
+handle_local_message (FILE * logfile, BIO * bio, char * message) {
 
     signed cmd_status;
     if ( message[0] == '/' && message[1] != '/' ) {
@@ -186,7 +195,7 @@ handle_local_message (FILE * logfile, signed filedes, char * message) {
             return C_QUIT;
         }
     } else {
-        cmd_status = irc_send(logfile, filedes, PRIVMSG, channels[0], message + (message[0] == '/'));
+        cmd_status = irc_send(logfile, bio, PRIVMSG, channels[0], message + (message[0] == '/'));
         return cmd_status == EXIT_SUCCESS ? C_MESSAGE : C_UNKNOWN;
     }
 

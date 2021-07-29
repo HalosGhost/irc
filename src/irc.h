@@ -12,9 +12,23 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <stdbool.h>
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define IRC_LINE_ENDING "\r\n"
 #define IRC_MESSAGE_MAX 512
+
+struct irc_server {
+    char * host;
+    char * port;
+    char * nick;
+    char * ident;
+    char * gecos;
+    char * pass;
+    bool tls;
+};
 
 #define FOR_EACH_COMMAND \
     X(INVITE, "%s %s") \
@@ -50,21 +64,21 @@ static const char * irc_command_fmt[] = {
 };
 #undef X
 
-static char servername [IRC_MESSAGE_MAX + 1];
+static char servername [64];
 
 signed
 irc_cmdf (enum irc_command, char *, va_list);
 
 signed
-irc_send (FILE *, signed, enum irc_command, ...);
+irc_send (FILE *, BIO *, enum irc_command, ...);
 
 signed
-irc_authenticate (FILE *, signed, char *, char *, char *, char *);
+irc_authenticate (FILE *, BIO *, char *, char *, char *, char *);
 
 signed
-irc_joinall(FILE *, signed, size_t, char *[]);
+irc_joinall (FILE *, BIO *, size_t, char *[]);
 
-signed
+BIO *
 irc_connect (FILE *, char *, char *);
 
 #endif
