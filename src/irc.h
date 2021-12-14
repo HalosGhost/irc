@@ -62,7 +62,10 @@ signed
 irc_authenticate (FILE *, signed, char *, char *, char *, char *);
 
 signed
-irc_joinall(FILE *, signed, size_t, char *[]);
+irc_join (FILE *, signed, char *);
+
+signed
+irc_joinall (FILE *, signed, size_t, char *[]);
 
 signed
 irc_connect (FILE *, char *, char *);

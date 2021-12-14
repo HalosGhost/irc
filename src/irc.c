@@ -74,7 +74,14 @@ irc_authenticate (FILE * logfile, signed filedes, char * nick, char * ident, cha
 }
 
 signed
-irc_joinall(FILE * logfile, signed filedes, size_t num_channels, char * channels[]) {
+irc_join (FILE * logfile, signed filedes, char * channel) {
+    if ( channel ) {
+        return irc_send(logfile, filedes, JOIN, channel);
+    }
+}
+
+signed
+irc_joinall (FILE * logfile, signed filedes, size_t num_channels, char * channels[]) {
 
     signed cmd_status = EXIT_SUCCESS;
     for ( size_t i = 0; i < num_channels; ++i ) {
