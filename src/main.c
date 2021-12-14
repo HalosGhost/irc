@@ -15,9 +15,10 @@ main (void) {
     cbreak();
     keypad(stdscr, true);
 
-    mvhline(LINES - 2, 0, 0, COLS);
     refresh();
-    WINDOW * buffer = newwin(LINES - 2, 0, 0, 0);
+    WINDOW * statbar = newwin(1, 0, LINES - 2, 0);
+    wattron(statbar, A_REVERSE);
+    WINDOW * buffer = newwin(LINES - 1, 0, 0, 0);
     WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
     scrollok(buffer, true);
 
@@ -60,6 +61,7 @@ main (void) {
                             case C_MESSAGE:
                                 wprintw(buffer, "%s\n", user_entry);
                                 wnoutrefresh(buffer);
+                                wnoutrefresh(statbar);
                                 break;
 
                             default:;
@@ -70,6 +72,8 @@ main (void) {
                     break;
 
                 case 127:
+                case KEY_BACKSPACE:
+                case KEY_DC:
                     if ( user_entry_len ) {
                         user_entry[--user_entry_len] = 0;
                     }
@@ -140,20 +144,28 @@ main (void) {
                 if ( msg_buf[i] == '\r' ) { msg_buf[i] = ' '; }
             }
 
-            wprintw(buffer, "%s", msg_buf);
+            if ( strncmp(msg_buf, "PING", 4) ) {
+                wprintw(buffer, "%s", msg_buf);
+            }
             fprintf(logfile, "%s", msg_buf);
             handle_server_message(logfile, fd, msg_buf);
             wnoutrefresh(buffer);
-            wmove(inputln, 0, user_entry_len);
-            wnoutrefresh(inputln);
         }
+
+        last_ping_in_us += delay;
+        mvwprintw(statbar, 0, 0, "%*llus ", COLS - 2, last_ping_in_us / 1000000);
+        wmove(inputln, 0, user_entry_len);
+        wnoutrefresh(statbar);
+        wnoutrefresh(inputln);
 
         doupdate();
         errno = 0;
+        usleep(delay);
     } while ( running );
 
     cleanup:
         if ( buffer ) { delwin(buffer); }
+        if ( statbar ) { delwin(statbar); }
         if ( inputln ) { delwin(inputln); }
         if ( fd > 0 ) { close(fd); }
         if ( logfile ) { fclose(logfile); }
@@ -168,6 +180,7 @@ handle_server_message (FILE * logfile, signed filedes, char * message) {
     signed cmd_status;
 
     if ( !strncmp(message, "PING", 4) ) {
+        last_ping_in_us = 0;
         cmd_status = irc_send(logfile, filedes, PONG, servername);
         if ( cmd_status == EXIT_FAILURE ) {
             return EXIT_FAILURE;
