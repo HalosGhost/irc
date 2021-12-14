@@ -1,6 +1,6 @@
 PROGNM = irc
 
-CC ?= gcc
+CC := tcc
 CFLAGS ?= -O2 -fPIE -flto -fstack-protector-strong --param=ssp-buffer-size=1 -Wno-reserved-id-macro -Wall -Wextra -Wpedantic -Werror -std=gnu18
 LDFLAGS ?= $(shell pkg-config --libs-only-l ncurses)
 VER = $(shell git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g')
