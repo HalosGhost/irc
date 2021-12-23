@@ -44,4 +44,6 @@ handle_local_message (FILE *, signed, char *);
 void
 signal_handler (signed);
 
+#define C(x) ((x) & 0x1F)
+
 #endif

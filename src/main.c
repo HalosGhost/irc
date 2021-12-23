@@ -79,6 +79,11 @@ main (void) {
                     }
                     break;
 
+                case C('u'):
+                    memset(user_entry, 0, IRC_MESSAGE_MAX);
+                    user_entry_len = 0;
+                    break;
+
                 default:
                     if ( user_entry_len < 512 ) {
                         user_entry[user_entry_len++] = ch;
