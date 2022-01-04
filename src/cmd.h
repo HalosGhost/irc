@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <ctype.h>
 
 #define FOR_EACH_BUILTIN \
     X(C_HELP, help) \

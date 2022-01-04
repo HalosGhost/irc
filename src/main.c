@@ -58,14 +58,28 @@ main (void) {
                                 running = false;
                                 continue;
 
+                            case C_JOIN: {
+                                char * token = strtok(user_entry, " \r\n"); // skip "/join"
+                                while ( (token = strtok(NULL, " \r\n")) ) {
+                                    wprintw(buffer, "joining %s\n", token);
+                                    irc_join(logfile, fd, token);
+                                }
+                            } break;
+
                             case C_MESSAGE:
                                 wprintw(buffer, "%s\n", user_entry);
                                 wnoutrefresh(buffer);
                                 wnoutrefresh(statbar);
                                 break;
 
-                            default:;
+                            default:
+                            case C_UNKNOWN:
+                                wprintw(buffer, "unknown command: %s\n", user_entry);
+                                wnoutrefresh(buffer);
+                                wnoutrefresh(statbar);
+                                break;
                         }
+
                         memset(user_entry, 0, IRC_MESSAGE_MAX);
                         user_entry_len = 0;
                     }
@@ -198,13 +212,10 @@ handle_server_message (FILE * logfile, signed filedes, char * message) {
 enum cmd_builtin
 handle_local_message (FILE * logfile, signed filedes, char * message) {
 
-    signed cmd_status;
     if ( message[0] == '/' && message[1] != '/' ) {
-        if ( !strcmp(message + 1, "quit") ) {
-            return C_QUIT;
-        }
+        return identify_cmd(message + 1);
     } else {
-        cmd_status = irc_send(logfile, filedes, PRIVMSG, channels[0], message + (message[0] == '/'));
+        signed cmd_status = irc_send(logfile, filedes, PRIVMSG, channels[0], message + (message[0] == '/'));
         return cmd_status == EXIT_SUCCESS ? C_MESSAGE : C_UNKNOWN;
     }
 
