@@ -9,6 +9,8 @@ main (void) {
         return EXIT_FAILURE;
     }
 
+    setlinebuf(logfile);
+
     initscr();
     nodelay(stdscr, true);
     noecho();
