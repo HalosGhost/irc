@@ -54,7 +54,13 @@ main (void) {
             switch ( ch ) {
                 case '\n':
                     if ( user_entry_len ) {
-                        enum cmd_builtin st = handle_local_message(logfile, fd, user_entry);
+                        enum cmd_builtin st;
+                        if ( user_entry[0] == '/' && user_entry[1] != '/' ) {
+                            st = identify_cmd(user_entry + 1);
+                        } else {
+                            st = C_MESSAGE;
+                        }
+
                         switch ( st ) {
                             case C_QUIT:
                                 running = false;
@@ -68,7 +74,19 @@ main (void) {
                                 }
                             } break;
 
+                            case C_ACTION: {
+                                wprintw(buffer, "%s %s\n", nick, user_entry + 4);
+                                size_t newsize = user_entry_len - 4 + sizeof "ACTION ";
+                                char * tmpmsg = malloc(newsize);
+                                snprintf(tmpmsg, newsize, "ACTION %s", user_entry + 4);
+                                irc_send(logfile, fd, PRIVMSG, channels[0], tmpmsg);
+                                free(tmpmsg);
+                                wnoutrefresh(buffer);
+                                wnoutrefresh(statbar);
+                            } break;
+
                             case C_MESSAGE:
+                                irc_send(logfile, fd, PRIVMSG, channels[0], user_entry + (user_entry[0] == '/'));
                                 wprintw(buffer, "%s\n", user_entry);
                                 wnoutrefresh(buffer);
                                 wnoutrefresh(statbar);
@@ -209,19 +227,6 @@ handle_server_message (FILE * logfile, signed filedes, char * message) {
     }
 
     return EXIT_SUCCESS;
-}
-
-enum cmd_builtin
-handle_local_message (FILE * logfile, signed filedes, char * message) {
-
-    if ( message[0] == '/' && message[1] != '/' ) {
-        return identify_cmd(message + 1);
-    } else {
-        signed cmd_status = irc_send(logfile, filedes, PRIVMSG, channels[0], message + (message[0] == '/'));
-        return cmd_status == EXIT_SUCCESS ? C_MESSAGE : C_UNKNOWN;
-    }
-
-    return C_UNKNOWN;
 }
 
 void

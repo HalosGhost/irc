@@ -8,7 +8,8 @@ identify_cmd (const char * cmd) {
     }
 
     for ( size_t i = 0; i < C_UNKNOWN; ++i ) {
-        if ( !strncmp(builtin_name[i], cmd, strlen(builtin_name[i])) ) {
+        size_t len = strlen(builtin_name[i]);
+        if ( !strncmp(builtin_name[i], cmd, len) ) {
             return (enum cmd_builtin )i;
         }
     }

@@ -12,6 +12,7 @@
     X(C_DISCONNECT, disconnect) \
     X(C_QUIT, quit) \
     X(C_MESSAGE, message) \
+    X(C_ACTION, me) \
     X(C_UNKNOWN, unknown)
 
 #define X(c, p) c,

@@ -38,9 +38,6 @@ static const int delay = 29970;
 signed
 handle_server_message (FILE *, signed, char *);
 
-enum cmd_builtin
-handle_local_message (FILE *, signed, char *);
-
 void
 signal_handler (signed);
 
