@@ -47,6 +47,7 @@ main (void) {
     bool running = true;
     do {
         signed ch = getch();
+        clock_t mark = clock();
         static size_t user_entry_len = 0;
         if ( ch != ERR ) {
             werase(inputln);
@@ -199,7 +200,11 @@ main (void) {
 
         doupdate();
         errno = 0;
-        usleep(delay);
+
+        clock_t elapsed = clock() - mark;
+        if ( delay > elapsed ) {
+            usleep(delay - elapsed);
+        }
     } while ( running );
 
     cleanup:

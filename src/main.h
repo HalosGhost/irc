@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <ncurses.h>
+#include <time.h>
 #include <signal.h>
 #include <stdbool.h>
 
@@ -33,7 +34,7 @@ static char * channels [] = {
 
 static char user_entry [IRC_MESSAGE_MAX + 1];
 static unsigned long long last_ping_in_us;
-static const int delay = 29970;
+static const int delay = 14985;
 
 signed
 handle_server_message (FILE *, signed, char *);
