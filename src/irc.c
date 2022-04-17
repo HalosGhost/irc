@@ -78,6 +78,8 @@ irc_join (FILE * logfile, signed filedes, char * channel) {
     if ( channel ) {
         return irc_send(logfile, filedes, JOIN, channel);
     }
+
+    return EXIT_FAILURE;
 }
 
 signed
