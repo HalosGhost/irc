@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <stdbool.h>
 
+#include "xxhashmap.h"
 #include "irc.h"
 #include "cmd.h"
 
@@ -27,7 +28,11 @@ static char * gecos = "a new client";
 
 static char * logpath = "./log";
 
-static char * channels [] = {
+static struct linked_list * chan;
+static xxhashmap chanmap;
+static xxhashmap * channels = &chanmap;
+
+static char * autojoin [] = {
     "##meskarune"
     //"##hgtest"
 };

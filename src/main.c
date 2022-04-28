@@ -9,6 +9,8 @@ main (void) {
         return EXIT_FAILURE;
     }
 
+    xxhashmap_init(channels, 5);
+
     setlinebuf(logfile);
 
     initscr();
@@ -20,9 +22,18 @@ main (void) {
     refresh();
     WINDOW * statbar = newwin(1, 0, LINES - 2, 0);
     wattron(statbar, A_REVERSE);
-    WINDOW * buffer = newwin(LINES - 1, 0, 0, 0);
     WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
-    scrollok(buffer, true);
+
+    size_t autojoin_sz = sizeof autojoin / sizeof *autojoin;
+    for ( size_t i = 0; i < autojoin_sz; ++i ) {
+        WINDOW * newbuf = newwin(LINES - 1, 0, 0, 0);
+        scrollok(newbuf, true);
+        xxhashmap_insert(channels, autojoin[i], newbuf);
+    }
+    for ( size_t i = 0; i < 1 << channels->capacity; ++i ) {
+        chan = channels->buckets[i];
+        if ( chan ) { break; }
+    }
 
     signal(SIGINT, signal_handler);
 
@@ -70,33 +81,33 @@ main (void) {
                             case C_JOIN: {
                                 char * token = strtok(user_entry, " \r\n"); // skip "/join"
                                 while ( (token = strtok(NULL, " \r\n")) ) {
-                                    wprintw(buffer, "joining %s\n", token);
+                                    wprintw(chan->val, "joining %s\n", token);
                                     irc_join(logfile, fd, token);
                                 }
                             } break;
 
                             case C_ACTION: {
-                                wprintw(buffer, "%s %s\n", nick, user_entry + 4);
+                                wprintw(chan->val, "%s %s\n", nick, user_entry + 4);
                                 size_t newsize = user_entry_len - 4 + sizeof "ACTION ";
                                 char * tmpmsg = malloc(newsize);
                                 snprintf(tmpmsg, newsize, "ACTION %s", user_entry + 4);
-                                irc_send(logfile, fd, PRIVMSG, channels[0], tmpmsg);
+                                irc_send(logfile, fd, PRIVMSG, chan->key, tmpmsg);
                                 free(tmpmsg);
-                                wnoutrefresh(buffer);
+                                wnoutrefresh(chan->val);
                                 wnoutrefresh(statbar);
                             } break;
 
                             case C_MESSAGE:
-                                irc_send(logfile, fd, PRIVMSG, channels[0], user_entry + (user_entry[0] == '/'));
-                                wprintw(buffer, "%s\n", user_entry);
-                                wnoutrefresh(buffer);
+                                irc_send(logfile, fd, PRIVMSG, chan->key, user_entry + (user_entry[0] == '/'));
+                                wprintw(chan->val, "%s\n", user_entry);
+                                wnoutrefresh(chan->val);
                                 wnoutrefresh(statbar);
                                 break;
 
                             default:
                             case C_UNKNOWN:
-                                wprintw(buffer, "unknown command: %s\n", user_entry);
-                                wnoutrefresh(buffer);
+                                wprintw(chan->val, "unknown command: %s\n", user_entry);
+                                wnoutrefresh(chan->val);
                                 wnoutrefresh(statbar);
                                 break;
                         }
@@ -175,7 +186,7 @@ main (void) {
             if ( !*servername ) {
                 sscanf(msg_buf, "%s NOTICE", servername);
             } else if ( !joined ) {
-                cmd_status = irc_joinall(logfile, fd, (sizeof channels / sizeof *channels), channels);
+                cmd_status = irc_joinall(logfile, fd, (sizeof autojoin / sizeof *autojoin), autojoin);
                 joined = true;
             }
 
@@ -185,11 +196,11 @@ main (void) {
             }
 
             if ( strncmp(msg_buf, "PING", 4) ) {
-                wprintw(buffer, "%s", msg_buf);
+                wprintw(chan->val, "%s", msg_buf);
             }
             fprintf(logfile, "%s", msg_buf);
             handle_server_message(logfile, fd, msg_buf);
-            wnoutrefresh(buffer);
+            wnoutrefresh(chan->val);
         }
 
         last_ping_in_us += delay;
@@ -208,11 +219,18 @@ main (void) {
     } while ( running );
 
     cleanup:
-        if ( buffer ) { delwin(buffer); }
+        for ( size_t i = 0; i < 1 << channels->capacity; ++i ) {
+            struct linked_list * l = channels->buckets[i];
+            while ( l ) {
+                delwin(l->val);
+                l = l->next;
+            }
+        }
+        if ( logfile ) { fclose(logfile); }
         if ( statbar ) { delwin(statbar); }
         if ( inputln ) { delwin(inputln); }
         if ( fd > 0 ) { close(fd); }
-        if ( logfile ) { fclose(logfile); }
+        if ( channels ) { xxhashmap_free(channels); }
         endwin();
 
         return exit_status;

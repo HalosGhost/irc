@@ -1,0 +1,27 @@
+#include "list.h"
+
+void
+ll_append (struct linked_list * ll, char * key, WINDOW * val) {
+
+    struct linked_list * node;
+    ll_init(node);
+
+    size_t keylen = strlen(key) + 1;
+    node->key = calloc(1, keylen);
+    memcpy(node->key, key, keylen);
+
+    node->val = val;
+
+    node->next = NULL;
+    ll->next = node;
+}
+
+void
+ll_free (struct linked_list * ll) {
+
+    if ( ll->next ) {
+        ll_free(ll->next);
+    }
+
+    free(ll->key);
+}
