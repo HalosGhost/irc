@@ -104,6 +104,42 @@ main (void) {
                                 wnoutrefresh(statbar);
                                 break;
 
+                            case C_BUFFERS:
+                                for ( size_t b = 0, i = 0; b < 1 << channels->capacity; ++b ) {
+                                    struct linked_list * cb = channels->buckets[b];
+                                    while ( cb ) {
+                                        wprintw(chan->val, "[%zu] %s", i, cb->key);
+                                        ++i;
+                                        cb = cb->next;
+                                        if ( cb ) {
+                                            wprintw(chan->val, "\t");
+                                        }
+                                    }
+                                }
+                                wprintw(chan->val, "\n");
+                                wnoutrefresh(chan->val);
+                                wnoutrefresh(statbar);
+                                break;
+
+                            case C_GOTO: {
+                                size_t tgt;
+                                sscanf(user_entry + sizeof "/goto", "%zu", &tgt);
+                                for ( size_t b = 0, i = 0; b < 1 << channels->capacity; ++b ) {
+                                    struct linked_list * cb = channels->buckets[b];
+                                    while ( cb ) {
+                                        if ( i == tgt ) {
+                                            chan = cb;
+                                            wprintw(chan->val, "viewing %s\n", cb->key);
+                                            break;
+                                        }
+                                        ++i;
+                                        cb = cb->next;
+                                    }
+                                }
+                                wnoutrefresh(chan->val);
+                                wnoutrefresh(statbar);
+                            } break;
+
                             default:
                             case C_UNKNOWN:
                                 wprintw(chan->val, "unknown command: %s\n", user_entry);

@@ -13,6 +13,8 @@
     X(C_QUIT, quit) \
     X(C_MESSAGE, message) \
     X(C_ACTION, me) \
+    X(C_BUFFERS, buffers) \
+    X(C_GOTO, goto) \
     X(C_UNKNOWN, unknown)
 
 #define X(c, p) c,
