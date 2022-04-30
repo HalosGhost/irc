@@ -14,7 +14,7 @@ xxhashmap_contains (xxhashmap * map, char * key) {
 
     struct linked_list * node = map->buckets[idx];
     while ( node ) {
-        if ( !strcmp(node->key, key) ) {
+        if ( !strcmp(node->name, key) ) {
             return true;
         }
         node = node->next;
@@ -23,15 +23,15 @@ xxhashmap_contains (xxhashmap * map, char * key) {
     return false;
 }
 
-WINDOW *
+struct linked_list *
 xxhashmap_get (xxhashmap * map, char * key) {
 
     unsigned idx = hashindex(map->capacity, key);
 
     struct linked_list * node = map->buckets[idx];
     while ( node ) {
-        if ( !strcmp(node->key, key) ) {
-            return node->val;
+        if ( !strcmp(node->name, key) ) {
+            return node;
         }
         node = node->next;
     }
@@ -48,17 +48,17 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val) {
         ll_init(map->buckets[idx]);
 
         size_t keylen = strlen(key) + 1;
-        map->buckets[idx]->key = calloc(keylen, sizeof(char));
-        memcpy(map->buckets[idx]->key, key, keylen);
+        map->buckets[idx]->name = calloc(keylen, sizeof(char));
+        memcpy(map->buckets[idx]->name, key, keylen);
 
-        map->buckets[idx]->val = val;
+        map->buckets[idx]->buf = val;
         return;
     }
 
     struct linked_list * node = map->buckets[idx];
     struct linked_list * last;
     while ( node ) {
-        if ( !strcmp(node->key, key) ) {
+        if ( !strcmp(node->name, key) ) {
             break;
         }
         last = node;
@@ -71,7 +71,7 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val) {
         return;
     }
 
-    node->val = val;
+    node->buf = val;
 }
 
 void
@@ -82,7 +82,7 @@ xxhashmap_delete (xxhashmap * map, char * key) {
     struct linked_list * node = map->buckets[idx];
     struct linked_list * last;
     while ( node ) {
-        if ( !strcmp(node->key, key) ) {
+        if ( !strcmp(node->name, key) ) {
             break;
         }
         last = node;
@@ -91,7 +91,7 @@ xxhashmap_delete (xxhashmap * map, char * key) {
 
     if ( node ) {
         last->next = node->next;
-        free(node->key);
+        free(node->name);
         free(node);
     }
 }

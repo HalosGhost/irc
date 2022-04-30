@@ -30,7 +30,7 @@ xxhashmap_insert (xxhashmap *, char *, WINDOW *);
 bool
 xxhashmap_contains (xxhashmap *, char *);
 
-WINDOW *
+struct linked_list *
 xxhashmap_get (xxhashmap *, char *);
 
 void

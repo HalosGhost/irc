@@ -8,8 +8,9 @@
 #include <ncurses.h>
 
 struct linked_list {
-    char * key;
-    WINDOW * val;
+    char * name;
+    WINDOW * buf;
+    FILE * log;
     struct linked_list * next;
 };
 

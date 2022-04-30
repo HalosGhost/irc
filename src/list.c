@@ -7,10 +7,10 @@ ll_append (struct linked_list * ll, char * key, WINDOW * val) {
     ll_init(node);
 
     size_t keylen = strlen(key) + 1;
-    node->key = calloc(1, keylen);
-    memcpy(node->key, key, keylen);
+    node->name = calloc(1, keylen);
+    memcpy(node->name, key, keylen);
 
-    node->val = val;
+    node->buf = val;
 
     node->next = NULL;
     ll->next = node;
@@ -23,5 +23,5 @@ ll_free (struct linked_list * ll) {
         ll_free(ll->next);
     }
 
-    free(ll->key);
+    free(ll->name);
 }
