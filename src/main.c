@@ -16,23 +16,26 @@ main (void) {
     wattron(statbar, A_REVERSE);
     WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
 
-    FILE * logfile = fopen(logpath, "a");
+    FILE * logfile = fopen(server, "a");
     if ( !logfile ) {
-        fprintf(stderr, "fopen() failed to open log file (%s): %s\n", logpath, strerror(errno));
+        fprintf(stderr, "fopen() failed to open log file (%s): %s\n", server, strerror(errno));
         return EXIT_FAILURE;
     }
     setlinebuf(logfile);
-    // todo: open a server/catch-all buffer
+    WINDOW * serv = newwin(LINES - 1, 0, 0, 0);
+    scrollok(serv, true);
+    xxhashmap_insert(channels, server, serv, logfile);
 
     // todo: move autojoin-buffer creation into the channel joining
-    // todo: open a log file for each buffer when we join it
     size_t autojoin_sz = sizeof autojoin / sizeof *autojoin;
     for ( size_t i = 0; i < autojoin_sz; ++i ) {
         WINDOW * newbuf = newwin(LINES - 1, 0, 0, 0);
         scrollok(newbuf, true);
-        xxhashmap_insert(channels, autojoin[i], newbuf);
+        FILE * log = fopen(autojoin[i], "a"); // "a+" with fseek dance for scrollback
+        setlinebuf(log);
+        xxhashmap_insert(channels, autojoin[i], newbuf, log);
     }
-    for ( size_t i = 0; i < 1 << channels->capacity; ++i ) {
+    for ( size_t i = 0; i < 1u << channels->capacity; ++i ) {
         chan = channels->buckets[i];
         if ( chan ) { break; }
     }
@@ -84,45 +87,47 @@ main (void) {
                             case C_JOIN: {
                                 char * token = strtok(user_entry, " \r\n"); // skip "/join"
                                 while ( (token = strtok(NULL, " \r\n")) ) {
-                                    wprintw(chan->buf, "joining %s\n", token);
-                                    irc_join(logfile, fd, token);
+                                    WINDOW * newbuf = newwin(LINES - 1, 0, 0, 0);
+                                    scrollok(newbuf, true);
+                                    FILE * log = fopen(token, "a"); // "a+" with fseek dance for scrollback
+                                    setlinebuf(log);
+                                    xxhashmap_insert(channels, token, newbuf, log);
+                                    chan = xxhashmap_get(channels, token);
+                                    irc_join(chan->log, fd, token);
                                 }
                             } break;
 
                             case C_ACTION: {
-                                wprintw(chan->buf, "%s %s\n", nick, user_entry + 4);
+                                wprintw(chan->buf, "%s %s\n", nick, user_entry + sizeof "/me");
                                 size_t newsize = user_entry_len - 4 + sizeof "ACTION ";
                                 char * tmpmsg = malloc(newsize);
                                 snprintf(tmpmsg, newsize, "ACTION %s", user_entry + 4);
-                                irc_send(logfile, fd, PRIVMSG, chan->name, tmpmsg);
-                                fprintf(logfile, ":%s!~%s@local ", nick, ident);
-                                fprintf(logfile, irc_command_fmt[PRIVMSG], chan->name, tmpmsg);
-                                fputs("\r\n", logfile);
+                                irc_send(chan->log, fd, PRIVMSG, chan->name, tmpmsg);
+                                fprintf(chan->log, ":%s!~%s@localhost ", nick, ident);
+                                fprintf(chan->log, irc_command_fmt[PRIVMSG], chan->name, tmpmsg);
+                                fputs("\r\n", chan->log);
                                 free(tmpmsg);
                                 wnoutrefresh(chan->buf);
                                 wnoutrefresh(statbar);
                             } break;
 
                             case C_MESSAGE: {
-                                irc_send(logfile, fd, PRIVMSG, chan->name, user_entry + (user_entry[0] == '/'));
+                                irc_send(chan->log, fd, PRIVMSG, chan->name, user_entry + (user_entry[0] == '/'));
                                 wprintw(chan->buf, "<%s> %s\n", nick, user_entry);
-                                fprintf(logfile, ":%s!~%s@local ", nick, ident);
-                                fprintf(logfile, irc_command_fmt[PRIVMSG], chan->name, user_entry + (user_entry[0] == '/'));
-                                fputs("\r\n", logfile);
+                                fprintf(chan->log, ":%s!~%s@localhost ", nick, ident);
+                                fprintf(chan->log, irc_command_fmt[PRIVMSG], chan->name, user_entry + (user_entry[0] == '/'));
+                                fputs("\r\n", chan->log);
                                 wnoutrefresh(chan->buf);
                                 wnoutrefresh(statbar);
                             } break;
 
                             case C_BUFFERS:
-                                for ( size_t b = 0, i = 0; b < 1 << channels->capacity; ++b ) {
+                                for ( size_t b = 0, i = 0; b < 1u << channels->capacity; ++b ) {
                                     struct linked_list * cb = channels->buckets[b];
                                     while ( cb ) {
-                                        wprintw(chan->buf, "[%zu] %s", i, cb->name);
+                                        wprintw(chan->buf, "[%zu] %s\t\t", i, cb->name);
                                         ++i;
                                         cb = cb->next;
-                                        if ( cb ) {
-                                            wprintw(chan->buf, "\t");
-                                        }
                                     }
                                 }
                                 wprintw(chan->buf, "\n");
@@ -133,17 +138,17 @@ main (void) {
                             case C_GOTO: {
                                 size_t tgt;
                                 sscanf(user_entry + sizeof "/goto", "%zu", &tgt);
-                                for ( size_t b = 0, i = 0; b < 1 << channels->capacity; ++b ) {
+                                for ( size_t b = 0, i = 0; b < 1u << channels->capacity; ++b ) {
                                     struct linked_list * cb = channels->buckets[b];
                                     while ( cb ) {
                                         if ( i == tgt ) {
                                             chan = cb;
-                                            wprintw(chan->buf, "viewing %s\n", cb->name);
                                             break;
                                         }
                                         ++i;
                                         cb = cb->next;
                                     }
+                                    if ( cb ) { break; }
                                 }
                                 wnoutrefresh(chan->buf);
                                 wnoutrefresh(statbar);
@@ -248,9 +253,8 @@ main (void) {
             signed matched = sscanf(msg_buf, ":%[^!]!%[^@]@%s PRIVMSG %s %[^\n]",
                 s_handle, s_host, s_mask, s_chan, s_msg);
             if ( matched == 5 ) {
-                // todo: modify incoming message handling to inline actions as well
-                struct linked_list * chan = xxhashmap_get(channels, s_chan);
-                WINDOW * b = chan->buf;
+                struct linked_list * ch = xxhashmap_get(channels, s_chan);
+                WINDOW * b = ch->buf;
                 char s_act [IRC_MESSAGE_MAX] = { 0 };
                 matched = sscanf(s_msg + (s_msg[0] == ':'), "ACTION %[^]", s_act);
                 if ( matched == 1 ) {
@@ -258,11 +262,9 @@ main (void) {
                 } else {
                     wprintw(b, "<%s> %s\n", s_handle, s_msg + (s_msg[0] == ':'));
                 }
-                // todo: modify for channel's individual log
-                fprintf(logfile, "%s", msg_buf);
-            // todo: modify for server/catch-all buffer
+                fprintf(ch->log, "%s", msg_buf);
             } else if ( strncmp(msg_buf, "PING", 4) ) {
-                wprintw(chan->buf, "%s", msg_buf);
+                wprintw(serv, "%s", msg_buf);
                 fprintf(logfile, "%s", msg_buf);
             }
             handle_server_message(logfile, fd, msg_buf);
@@ -270,13 +272,13 @@ main (void) {
         }
 
         last_ping_in_us += delay;
-        mvwprintw(statbar, 0, 0, "%*llus ", COLS - 2, last_ping_in_us / 1000000);
+        signed spacer = COLS - (strlen(chan->name) + 2);
+        mvwprintw(statbar, 0, 0, "%s%*llus ", chan->name, spacer, last_ping_in_us / 1000000);
         wmove(inputln, 0, user_entry_len);
         wnoutrefresh(statbar);
         wnoutrefresh(inputln);
 
         doupdate();
-        fflush(logfile);
         errno = 0;
 
         clock_t elapsed = clock() - mark;
@@ -286,14 +288,14 @@ main (void) {
     } while ( running );
 
     cleanup:
-        for ( size_t i = 0; i < 1 << channels->capacity; ++i ) {
+        for ( size_t i = 0; i < 1u << channels->capacity; ++i ) {
             struct linked_list * l = channels->buckets[i];
             while ( l ) {
                 delwin(l->buf);
+                fclose(l->log);
                 l = l->next;
             }
         }
-        if ( logfile ) { fclose(logfile); }
         if ( statbar ) { delwin(statbar); }
         if ( inputln ) { delwin(inputln); }
         if ( fd > 0 ) { close(fd); }

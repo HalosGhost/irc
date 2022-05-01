@@ -26,7 +26,7 @@ static char * nick = "hg-x201";
 static char * ident = "hg-x201";
 static char * gecos = "a new client";
 
-static char * logpath = "./log";
+//static char * logpath = "./log";
 
 static struct linked_list * chan;
 static xxhashmap chanmap;

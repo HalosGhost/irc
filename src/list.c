@@ -1,7 +1,7 @@
 #include "list.h"
 
 void
-ll_append (struct linked_list * ll, char * key, WINDOW * val) {
+ll_append (struct linked_list * ll, char * key, WINDOW * val, FILE * log) {
 
     struct linked_list * node;
     ll_init(node);
@@ -11,6 +11,7 @@ ll_append (struct linked_list * ll, char * key, WINDOW * val) {
     memcpy(node->name, key, keylen);
 
     node->buf = val;
+    node->log = log;
 
     node->next = NULL;
     ll->next = node;

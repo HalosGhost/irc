@@ -40,7 +40,7 @@ xxhashmap_get (xxhashmap * map, char * key) {
 }
 
 void
-xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val) {
+xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
 
     unsigned idx = hashindex(map->capacity, key);
 
@@ -52,6 +52,7 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val) {
         memcpy(map->buckets[idx]->name, key, keylen);
 
         map->buckets[idx]->buf = val;
+        map->buckets[idx]->log = log;
         return;
     }
 
@@ -67,11 +68,12 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val) {
 
     // no match
     if ( !node ) {
-        ll_append(last, key, val);
+        ll_append(last, key, val, log);
         return;
     }
 
     node->buf = val;
+    node->log = log;
 }
 
 void
@@ -103,7 +105,7 @@ xxhashmap_free (xxhashmap * map) {
         return;
     };
 
-    for ( size_t i = 0; i < lower_n_mask(map->capacity); ++i ) {
+    for ( size_t i = 0; i < (size_t )lower_n_mask(map->capacity); ++i ) {
         if ( !map->buckets[i] ) { continue; }
         ll_free(map->buckets[i]);
     }
