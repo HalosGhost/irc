@@ -10,8 +10,8 @@ ll_append (struct linked_list * ll, char * key, WINDOW * val, FILE * log) {
     node->name = calloc(1, keylen);
     memcpy(node->name, key, keylen);
 
-    node->buf = val;
-    node->log = log;
+    node->buf.win = val;
+    node->buf.log = log;
 
     node->next = NULL;
     ll->next = node;

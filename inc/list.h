@@ -7,10 +7,14 @@
 #include <string.h>
 #include <ncurses.h>
 
-struct linked_list {
-    char * name;
-    WINDOW * buf;
+struct buffer {
+    WINDOW * win;
     FILE * log;
+};
+
+struct linked_list {
+    struct buffer buf;
+    char * name;
     struct linked_list * next;
 };
 

@@ -18,33 +18,17 @@ main (void) {
     wattron(statbar, A_REVERSE);
     WINDOW * inputln = newwin(1, 0, LINES - 1, 0);
 
-    FILE * logfile = fopen(server, "a");
-    if ( !logfile ) {
-        fprintf(stderr, "fopen() failed to open log file (%s): %s\n", server, strerror(errno));
-        return EXIT_FAILURE;
-    }
-    setlinebuf(logfile);
-    WINDOW * serv = newwin(LINES - 1, 0, 0, 0);
-    scrollok(serv, true);
-    xxhashmap_insert(channels, server, serv, logfile);
+    struct linked_list * serv = new_buffer(server);
+    chan = serv;
 
-    // todo: move autojoin-buffer creation into the channel joining
     size_t autojoin_sz = sizeof autojoin / sizeof *autojoin;
     for ( size_t i = 0; i < autojoin_sz; ++i ) {
-        WINDOW * newbuf = newwin(LINES - 1, 0, 0, 0);
-        scrollok(newbuf, true);
-        FILE * log = fopen(autojoin[i], "a"); // "a+" with fseek dance for scrollback
-        setlinebuf(log);
-        xxhashmap_insert(channels, autojoin[i], newbuf, log);
-    }
-    for ( size_t i = 0; i < 1u << channels->capacity; ++i ) {
-        chan = channels->buckets[i];
-        if ( chan ) { break; }
+        new_buffer(autojoin[i]);
     }
 
     signal(SIGINT, signal_handler);
 
-    signed fd = irc_connect(logfile, server, port);
+    signed fd = irc_connect(server, port);
     if ( fd < 0 ) {
         exit_status = EXIT_FAILURE;
         goto cleanup;
@@ -56,7 +40,7 @@ main (void) {
 
     signed cmd_status = EXIT_SUCCESS;
 
-    cmd_status = irc_authenticate(logfile, fd, nick, ident, gecos, pass);
+    cmd_status = irc_authenticate(fd, nick, ident, gecos, pass);
     if ( cmd_status != EXIT_SUCCESS ) {
         exit_status = cmd_status;
         goto cleanup;
@@ -90,37 +74,32 @@ main (void) {
                             case C_JOIN: {
                                 char * token = strtok(user_entry, " \r\n"); // skip "/join"
                                 while ( (token = strtok(NULL, " \r\n")) ) {
-                                    WINDOW * newbuf = newwin(LINES - 1, 0, 0, 0);
-                                    scrollok(newbuf, true);
-                                    FILE * log = fopen(token, "a"); // "a+" with fseek dance for scrollback
-                                    setlinebuf(log);
-                                    xxhashmap_insert(channels, token, newbuf, log);
-                                    chan = xxhashmap_get(channels, token);
-                                    irc_join(chan->log, fd, token);
+                                    chan = new_buffer(token);
+                                    irc_join(fd, token);
                                 }
                             } break;
 
                             case C_ACTION: {
-                                wprintw(chan->buf, "%s %s\n", nick, user_entry + sizeof "/me");
+                                wprintw(chan->buf.win, "%s %s\n", nick, user_entry + sizeof "/me");
                                 size_t newsize = user_entry_len - 4 + sizeof "ACTION ";
                                 char * tmpmsg = malloc(newsize);
-                                snprintf(tmpmsg, newsize, "ACTION %s", user_entry + 4);
-                                irc_send(chan->log, fd, PRIVMSG, chan->name, tmpmsg);
-                                fprintf(chan->log, ":%s!~%s@localhost ", nick, ident);
-                                fprintf(chan->log, irc_command_fmt[PRIVMSG], chan->name, tmpmsg);
-                                fputs("\r\n", chan->log);
+                                snprintf(tmpmsg, newsize, "ACTION %s", user_entry + sizeof "/me");
+                                irc_send(fd, PRIVMSG, chan->name, tmpmsg);
+                                fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
+                                fprintf(chan->buf.log, irc_command_fmt[PRIVMSG], chan->name, tmpmsg);
+                                fputs("\r\n", chan->buf.log);
                                 free(tmpmsg);
-                                wnoutrefresh(chan->buf);
+                                wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                             } break;
 
                             case C_MESSAGE: {
-                                irc_send(chan->log, fd, PRIVMSG, chan->name, user_entry + (user_entry[0] == '/'));
-                                wprintw(chan->buf, "<%s> %s\n", nick, user_entry);
-                                fprintf(chan->log, ":%s!~%s@localhost ", nick, ident);
-                                fprintf(chan->log, irc_command_fmt[PRIVMSG], chan->name, user_entry + (user_entry[0] == '/'));
-                                fputs("\r\n", chan->log);
-                                wnoutrefresh(chan->buf);
+                                irc_send(fd, PRIVMSG, chan->name, user_entry + (user_entry[0] == '/'));
+                                wprintw(chan->buf.win, "<%s> %s\n", nick, user_entry);
+                                fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
+                                fprintf(chan->buf.log, irc_command_fmt[PRIVMSG], chan->name, user_entry + (user_entry[0] == '/'));
+                                fputs("\r\n", chan->buf.log);
+                                wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                             } break;
 
@@ -128,13 +107,13 @@ main (void) {
                                 for ( size_t b = 0, i = 0; b < 1u << channels->capacity; ++b ) {
                                     struct linked_list * cb = channels->buckets[b];
                                     while ( cb ) {
-                                        wprintw(chan->buf, "[%zu] %s\t\t", i, cb->name);
+                                        wprintw(chan->buf.win, "[%zu] %s\t\t", i, cb->name);
                                         ++i;
                                         cb = cb->next;
                                     }
                                 }
-                                wprintw(chan->buf, "\n");
-                                wnoutrefresh(chan->buf);
+                                wprintw(chan->buf.win, "\n");
+                                wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                                 break;
 
@@ -153,14 +132,14 @@ main (void) {
                                     }
                                     if ( cb ) { break; }
                                 }
-                                wnoutrefresh(chan->buf);
+                                wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                             } break;
 
                             default:
                             case C_UNKNOWN:
-                                wprintw(chan->buf, "unknown command: %s\n", user_entry);
-                                wnoutrefresh(chan->buf);
+                                wprintw(chan->buf.win, "unknown command: %s\n", user_entry);
+                                wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                                 break;
                         }
@@ -226,12 +205,12 @@ main (void) {
                 if ( errsv == EAGAIN || errsv == EWOULDBLOCK ) {
                     continue;
                 } else {
-                    fprintf(logfile, "read() failed: %s\n", strerror(errsv));
+                    fprintf(serv->buf.log, "read() failed: %s\n", strerror(errsv));
                     exit_status = EXIT_FAILURE;
                     goto cleanup;
                 }
             } else if ( !bytes_read ) {
-                fputs("connection closed\n", logfile);
+                fputs("connection closed\n", serv->buf.log);
                 goto cleanup;
             }
 
@@ -239,39 +218,12 @@ main (void) {
             if ( !*servername ) {
                 sscanf(msg_buf, "%s NOTICE", servername);
             } else if ( !joined ) {
-                cmd_status = irc_joinall(logfile, fd, (sizeof autojoin / sizeof *autojoin), autojoin);
+                cmd_status = irc_joinall(fd, (sizeof autojoin / sizeof *autojoin), autojoin);
                 joined = true;
             }
 
-            // prevent \r\n from clearing the line
-            for ( size_t i = 0; i < IRC_MESSAGE_MAX; ++i ) {
-                if ( msg_buf[i] == '\r' ) { msg_buf[i] = ' '; }
-            }
-
-            char s_handle [IRC_MESSAGE_MAX] = { 0 };
-            char s_host [IRC_MESSAGE_MAX] = { 0 };
-            char s_mask [IRC_MESSAGE_MAX] = { 0 };
-            char s_chan [IRC_MESSAGE_MAX] = { 0 };
-            char s_msg [IRC_MESSAGE_MAX] = { 0 };
-            signed matched = sscanf(msg_buf, ":%[^!]!%[^@]@%s PRIVMSG %s %[^\n]",
-                s_handle, s_host, s_mask, s_chan, s_msg);
-            if ( matched == 5 ) {
-                struct linked_list * ch = xxhashmap_get(channels, s_chan);
-                WINDOW * b = ch->buf;
-                char s_act [IRC_MESSAGE_MAX] = { 0 };
-                matched = sscanf(s_msg + (s_msg[0] == ':'), "ACTION %[^]", s_act);
-                if ( matched == 1 ) {
-                    wprintw(b, "%s %s\n", s_handle, s_act);
-                } else {
-                    wprintw(b, "<%s> %s\n", s_handle, s_msg + (s_msg[0] == ':'));
-                }
-                fprintf(ch->log, "%s", msg_buf);
-            } else if ( strncmp(msg_buf, "PING", 4) ) {
-                wprintw(serv, "%s", msg_buf);
-                fprintf(logfile, "%s", msg_buf);
-            }
-            handle_server_message(logfile, fd, msg_buf);
-            wnoutrefresh(chan->buf);
+            handle_server_message(serv, fd, msg_buf);
+            wnoutrefresh(chan->buf.win);
         }
 
         last_ping_in_us += delay;
@@ -294,8 +246,8 @@ main (void) {
         for ( size_t i = 0; i < 1u << channels->capacity; ++i ) {
             struct linked_list * l = channels->buckets[i];
             while ( l ) {
-                delwin(l->buf);
-                fclose(l->log);
+                delwin(l->buf.win);
+                fclose(l->buf.log);
                 l = l->next;
             }
         }
@@ -308,17 +260,63 @@ main (void) {
         return exit_status;
 }
 
+struct linked_list *
+new_buffer (char * key) {
+
+    WINDOW * buf = newwin(LINES - 1, 0, 0, 0);
+    scrollok(buf, true);
+    FILE * log = fopen(key, "a"); // "a+" with fseek dance for scrollback
+    setlinebuf(log);
+    xxhashmap_insert(channels, key, buf, log);
+    return xxhashmap_get(channels, key);
+}
+
 signed
-handle_server_message (FILE * logfile, signed filedes, char * message) {
+handle_server_message (struct linked_list * serv, signed filedes, char * message) {
 
     signed cmd_status;
 
-    if ( !strncmp(message, "PING", 4) ) {
+    char s_handle [IRC_MESSAGE_MAX] = { 0 };
+    char s_host [IRC_MESSAGE_MAX] = { 0 };
+    char s_mask [IRC_MESSAGE_MAX] = { 0 };
+    char s_chan [IRC_MESSAGE_MAX] = { 0 };
+    char s_msg [IRC_MESSAGE_MAX] = { 0 };
+    signed matched = sscanf(message, ":%[^!]!%[^@]@%s PRIVMSG %s %[^\n]",
+        s_handle, s_host, s_mask, s_chan, s_msg);
+    if ( matched == 5 ) {
+        char * tgt = !strcmp(s_chan, nick) ? s_handle : s_chan;
+        if ( !xxhashmap_contains(channels, tgt) ) {
+            new_buffer(tgt);
+        }
+        struct linked_list * ch = xxhashmap_get(channels, tgt);
+        WINDOW * b = ch->buf.win;
+        char s_act [IRC_MESSAGE_MAX] = { 0 };
+        matched = sscanf(s_msg + (s_msg[0] == ':'), "ACTION %[^]", s_act);
+        if ( matched == 1 ) {
+            wprintw(b, "%s %s\n", s_handle, s_act);
+        } else {
+            // prevent \r\n from clearing the line
+            // todo: find more robustly with strstr
+            for ( size_t i = 0; i < IRC_MESSAGE_MAX; ++i ) {
+                if ( s_msg[i] == '\r' ) { s_msg[i] = ' '; }
+            }
+            wprintw(b, "<%s> %s\n", s_handle, s_msg + (s_msg[0] == ':'));
+        }
+        fprintf(ch->buf.log, "%s", message);
+    } else if ( !strncmp(message, "PING", 4) ) {
         last_ping_in_us = 0;
-        cmd_status = irc_send(logfile, filedes, PONG, servername);
+        cmd_status = irc_send(filedes, PONG, servername);
         if ( cmd_status == EXIT_FAILURE ) {
             return EXIT_FAILURE;
         }
+    } else {
+        fprintf(serv->buf.log, "%s", message);
+        // prevent \r\n from clearing the line
+        // todo: find more robustly with strstr
+        for ( size_t i = 0; i < IRC_MESSAGE_MAX; ++i ) {
+            if ( message[i] == '\r' ) { message[i] = ' '; }
+        }
+        wprintw(serv->buf.win, "%s", message);
     }
 
     return EXIT_SUCCESS;

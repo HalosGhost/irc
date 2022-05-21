@@ -51,8 +51,8 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
         map->buckets[idx]->name = calloc(keylen, sizeof(char));
         memcpy(map->buckets[idx]->name, key, keylen);
 
-        map->buckets[idx]->buf = val;
-        map->buckets[idx]->log = log;
+        map->buckets[idx]->buf.win = val;
+        map->buckets[idx]->buf.log = log;
         return;
     }
 
@@ -72,8 +72,8 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
         return;
     }
 
-    node->buf = val;
-    node->log = log;
+    node->buf.win = val;
+    node->buf.log = log;
 }
 
 void

@@ -56,19 +56,19 @@ signed
 irc_cmdf (enum irc_command, char *, va_list);
 
 signed
-irc_send (FILE *, signed, enum irc_command, ...);
+irc_send (signed, enum irc_command, ...);
 
 signed
-irc_authenticate (FILE *, signed, char *, char *, char *, char *);
+irc_authenticate (signed, char *, char *, char *, char *);
 
 signed
-irc_join (FILE *, signed, char *);
+irc_join (signed, char *);
 
 signed
-irc_joinall (FILE *, signed, size_t, char *[]);
+irc_joinall (signed, size_t, char *[]);
 
 signed
-irc_connect (FILE *, char *, char *);
+irc_connect (char *, char *);
 
 #endif
 

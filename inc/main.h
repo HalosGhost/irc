@@ -43,8 +43,11 @@ static char user_entry [IRC_MESSAGE_MAX + 1];
 static unsigned long long last_ping_in_us;
 static const int delay = 14985;
 
+struct linked_list *
+new_buffer (char *);
+
 signed
-handle_server_message (FILE *, signed, char *);
+handle_server_message (struct linked_list *, signed, char *);
 
 void
 signal_handler (signed);
