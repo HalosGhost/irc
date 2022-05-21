@@ -12,6 +12,7 @@ ll_append (struct linked_list * ll, char * key, WINDOW * val, FILE * log) {
 
     node->buf.win = val;
     node->buf.log = log;
+    ring_init(&(node->buf.hist));
 
     node->next = NULL;
     ll->next = node;
@@ -24,5 +25,6 @@ ll_free (struct linked_list * ll) {
         ll_free(ll->next);
     }
 
+    free(ll->buf.hist);
     free(ll->name);
 }

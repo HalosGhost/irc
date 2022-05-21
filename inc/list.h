@@ -7,10 +7,7 @@
 #include <string.h>
 #include <ncurses.h>
 
-struct buffer {
-    WINDOW * win;
-    FILE * log;
-};
+#include "buffer.h"
 
 struct linked_list {
     struct buffer buf;

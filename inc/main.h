@@ -17,6 +17,7 @@
 #include "xxhashmap.h"
 #include "irc.h"
 #include "cmd.h"
+#include "buffer.h"
 
 static volatile sig_atomic_t exit_status = EXIT_SUCCESS;
 static volatile sig_atomic_t caught_signum;
@@ -28,6 +29,7 @@ static char * nick = "hg-x201";
 static char * ident = "hg-x201";
 static char * gecos = "a new client";
 
+// todo: put logs in a log directory
 //static char * logpath = "./log";
 
 static struct linked_list * chan;

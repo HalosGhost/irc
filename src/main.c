@@ -92,6 +92,7 @@ main (void) {
                                 fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
                                 fprintf(chan->buf.log, irc_command_fmt[PRIVMSG], chan->name, tmpmsg);
                                 fputs("\r\n", chan->buf.log);
+                                ring_insert(chan->buf.hist, C_ACTION, nick, user_entry + sizeof "/me");
                                 free(tmpmsg);
                                 wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
@@ -103,6 +104,7 @@ main (void) {
                                 fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
                                 fprintf(chan->buf.log, irc_command_fmt[PRIVMSG], chan->name, user_entry + (user_entry[0] == '/'));
                                 fputs("\r\n", chan->buf.log);
+                                ring_insert(chan->buf.hist, C_MESSAGE, nick, user_entry);
                                 wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                             } break;
