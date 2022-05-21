@@ -15,6 +15,7 @@
     X(C_ACTION, me) \
     X(C_BUFFERS, buffers) \
     X(C_GOTO, goto) \
+    X(C_QUERY, query) \
     X(C_UNKNOWN, unknown)
 
 #define X(c, p) c,
@@ -31,5 +32,7 @@ static const char * builtin_name [] = {
 
 enum cmd_builtin
 identify_cmd (const char *);
+
+// todo: extract command case bodies from main here
 
 #endif

@@ -71,11 +71,15 @@ main (void) {
                                 running = false;
                                 continue;
 
+                            // todo: C_CONNECT should be about the same
+                            case C_QUERY:
                             case C_JOIN: {
                                 char * token = strtok(user_entry, " \r\n"); // skip "/join"
                                 while ( (token = strtok(NULL, " \r\n")) ) {
                                     chan = new_buffer(token);
-                                    irc_join(fd, token);
+                                    if ( st == C_JOIN ) {
+                                        irc_join(fd, token);
+                                    }
                                 }
                             } break;
 
