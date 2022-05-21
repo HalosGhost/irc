@@ -5,6 +5,8 @@ main (void) {
 
     xxhashmap_init(channels, 5);
 
+    setlocale(LC_ALL, "");
+
     initscr();
     nodelay(stdscr, true);
     noecho();
@@ -62,11 +64,12 @@ main (void) {
 
     bool running = true;
     do {
-        signed ch = getch();
+        wint_t ch;
+        signed res = get_wch(&ch);
         clock_t mark = clock();
         // todo: try to figure out horizontal-scrolling for the input window
         static size_t user_entry_len = 0;
-        if ( ch != ERR ) {
+        if ( res != ERR ) {
             werase(inputln);
 
             switch ( ch ) {
@@ -182,7 +185,7 @@ main (void) {
 
                 default:
                     if ( user_entry_len < 512 ) {
-                        user_entry[user_entry_len++] = ch;
+                        user_entry_len += sprintf(user_entry + user_entry_len, "%lc", ch);
                     }
                     break;
             }

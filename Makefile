@@ -2,7 +2,7 @@ PROGNM = irc
 
 CC := tcc
 CFLAGS ?= -Iinc -O2 -fPIE -flto -fstack-protector-strong --param=ssp-buffer-size=1 -Wno-reserved-id-macro -Wall -Wextra -Wpedantic -Werror -std=gnu18
-LDFLAGS ?= $(shell pkg-config --libs-only-l ncurses libxxhash)
+LDFLAGS ?= $(shell pkg-config --libs-only-l ncursesw libxxhash)
 ifeq ($(wildcard ./.git),)
 VER = 0.0.0
 else

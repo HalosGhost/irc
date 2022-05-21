@@ -7,10 +7,12 @@
 #include <string.h>
 #include <errno.h>
 #include <poll.h>
+#define _XOPEN_SOURCE 700
 #include <ncurses.h>
 #include <time.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <locale.h>
 
 #include "xxhashmap.h"
 #include "irc.h"
