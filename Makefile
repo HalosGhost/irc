@@ -15,7 +15,7 @@ SANITIZERS ?= -fsanitize=undefined
 CONFIGURATION := release
 
 ifneq ($(CC), tcc)
-CFLAGS += -pie -D_FORTIFY_SOURCE=2
+CFLAGS += -pie -D_FORTIFY_SOURCE=2 -march=native -mcpu=native
 LDFLAGS += -Wl,-z,relro,-z,now
 endif
 
