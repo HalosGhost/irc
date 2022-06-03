@@ -53,6 +53,7 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
 
         map->buckets[idx]->buf.win = val;
         map->buckets[idx]->buf.log = log;
+        ring_init(&(map->buckets[idx]->buf.hist));
         return;
     }
 
@@ -74,6 +75,7 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
 
     node->buf.win = val;
     node->buf.log = log;
+    ring_init(&(node->buf.hist));
 }
 
 void

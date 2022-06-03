@@ -28,15 +28,11 @@ irc_send (signed filedes, enum irc_command cmd, ...) {
     va_list args;
     va_start(args, cmd);
 
-    signed errsv;
-
     static char msg_buf [IRC_MESSAGE_MAX + 1];
     signed length = irc_cmdf(cmd, msg_buf, args);
 
-    errsv = errno = 0;
     ssize_t bytes_written = write(filedes, msg_buf, (size_t )length);
     if ( bytes_written < 0 ) {
-        errsv = errno;
         return EXIT_FAILURE;
     }
 
@@ -107,20 +103,14 @@ irc_connect (char * server, char * port) {
         return EXIT_FAILURE;
     }
 
-    signed errsv = errno = 0;
     signed fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if ( fd < 0 ) {
-        errsv = errno;
-
         freeaddrinfo(res);
         return -1;
     }
 
-    errsv = errno = 0;
     status = connect(fd, res->ai_addr, res->ai_addrlen);
     if ( status < 0 ) {
-        errsv = errno;
-
         close(fd);
         freeaddrinfo(res);
         return -1;
@@ -128,11 +118,8 @@ irc_connect (char * server, char * port) {
 
     freeaddrinfo(res);
 
-    errsv = errno = 0;
     status = fcntl(fd, F_SETFL, O_NONBLOCK);
     if ( status < 0 ) {
-        errsv = errno;
-
         close(fd);
         return -1;
     }

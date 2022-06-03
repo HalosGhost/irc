@@ -21,4 +21,7 @@ ring_init (struct ring **);
 void
 ring_insert (struct ring *, enum cmd_builtin, ...);
 
+char *
+ring_get (struct ring *, size_t);
+
 #endif

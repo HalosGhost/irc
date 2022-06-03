@@ -59,11 +59,9 @@ main (void) {
             switch ( ch ) {
                 case '\n':
                     if ( user_entry_len ) {
-                        enum cmd_builtin st;
+                        enum cmd_builtin st = C_MESSAGE;
                         if ( user_entry[0] == '/' && user_entry[1] != '/' ) {
                             st = identify_cmd(user_entry + 1);
-                        } else {
-                            st = C_MESSAGE;
                         }
 
                         switch ( st ) {
@@ -138,6 +136,17 @@ main (void) {
                                     }
                                     if ( cb ) { break; }
                                 }
+                                werase(chan->buf.win);
+                                wmove(chan->buf.win, 0, 0);
+                                for ( signed i = 1; i <= LINES - 2; ++i ) {
+                                    char * line = ring_get(chan->buf.hist, i);
+                                    if ( line ) {
+                                        signed len = strlen(line);
+                                        wprintw(chan->buf.win, "%*s", len, line);
+                                    } else {
+                                        wprintw(chan->buf.win, "\r\n");
+                                    }
+                                }
                                 wnoutrefresh(chan->buf.win);
                                 wnoutrefresh(statbar);
                             } break;
@@ -169,6 +178,7 @@ main (void) {
                     break;
 
                 default:
+                    // todo: fix multi-byte grapheme clusters
                     if ( user_entry_len < 512 ) {
                         user_entry_len += sprintf(user_entry + user_entry_len, "%lc", ch);
                     }
@@ -300,6 +310,7 @@ handle_server_message (struct linked_list * serv, signed filedes, char * message
         matched = sscanf(s_msg + (s_msg[0] == ':'), "ACTION %[^]", s_act);
         if ( matched == 1 ) {
             wprintw(b, "%s %s\n", s_handle, s_act);
+            ring_insert(ch->buf.hist, C_ACTION, s_handle, s_act);
         } else {
             // prevent \r\n from clearing the line
             // todo: find more robustly with strstr
@@ -307,6 +318,7 @@ handle_server_message (struct linked_list * serv, signed filedes, char * message
                 if ( s_msg[i] == '\r' ) { s_msg[i] = ' '; }
             }
             wprintw(b, "<%s> %s\n", s_handle, s_msg + (s_msg[0] == ':'));
+            ring_insert(ch->buf.hist, C_MESSAGE, s_handle, s_msg + (s_msg[0] == ':'));
         }
         fprintf(ch->buf.log, "%s", message);
     } else if ( !strncmp(message, "PING", 4) ) {

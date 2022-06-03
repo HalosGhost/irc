@@ -12,8 +12,8 @@
     X(C_JOIN, join, NULL, NULL) \
     X(C_DISCONNECT, disconnect, NULL, NULL) \
     X(C_QUIT, quit, NULL, NULL) \
-    X(C_MESSAGE, message, NULL, NULL) \
-    X(C_ACTION, me, NULL, NULL) \
+    X(C_MESSAGE, message, "<%s> %s\n", NULL) \
+    X(C_ACTION, me, "%s %s\n", NULL) \
     X(C_BUFFERS, buffers, NULL, NULL) \
     X(C_GOTO, goto, NULL, NULL) \
     X(C_QUERY, query, NULL, NULL) \

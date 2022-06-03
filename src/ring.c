@@ -4,8 +4,11 @@ void
 ring_init (struct ring ** ring) {
 
     struct ring * r = calloc(1, sizeof(struct ring));
-    r->rungs = calloc(LINES - 2, IRC_MESSAGE_MAX);
-    r->offset = 0;
+    r->rungs = calloc(LINES - 2, sizeof(char *));
+    for ( size_t i = 0; i < LINES - 2; ++i ) {
+        r->rungs[i] = calloc(IRC_MESSAGE_MAX, sizeof(char));
+    }
+    r->offset = LINES - 3; // ensures the first insert is at index 0
     *ring = r;
 }
 
@@ -18,7 +21,14 @@ ring_insert (struct ring * ring, enum cmd_builtin cmd, ...) {
     const char * fmt = builtin_buf_fmt[cmd];
     if ( fmt ) {
         // todo: this will probably screw up on sigwinch
-        vsnprintf(ring->rungs[ring->offset++ % LINES], IRC_MESSAGE_MAX, fmt, args);
+        ring->offset = (ring->offset + 1) % (LINES - 2);
+        vsnprintf(ring->rungs[ring->offset], IRC_MESSAGE_MAX, fmt, args);
     }
     va_end(args);
+}
+
+char *
+ring_get (struct ring * ring, size_t index) {
+
+    return ring->rungs[(index + ring->offset) % (LINES - 2)];
 }
