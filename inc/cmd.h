@@ -17,7 +17,7 @@
     X(C_BUFFERS, buffers, NULL, NULL) \
     X(C_GOTO, goto, NULL, NULL) \
     X(C_QUERY, query, NULL, NULL) \
-    X(C_UNKNOWN, unknown, NULL, NULL)
+    X(C_UNKNOWN, unknown, "%s", NULL)
 
 #define X(c, p, b, l) c,
 enum cmd_builtin {

@@ -10,6 +10,7 @@
 #include "ring.h"
 
 struct buffer {
+    // todo: remove in favor of using hist
     WINDOW * win;
     FILE * log;
     struct ring * hist;

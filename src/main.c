@@ -335,6 +335,7 @@ handle_server_message (struct linked_list * serv, signed filedes, char * message
             if ( message[i] == '\r' ) { message[i] = ' '; }
         }
         wprintw(serv->buf.win, "%s", message);
+        ring_insert(serv->buf.hist, C_UNKNOWN, message);
     }
 
     return EXIT_SUCCESS;
