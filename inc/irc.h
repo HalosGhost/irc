@@ -17,6 +17,7 @@
 #define IRC_MESSAGE_MAX 512
 
 #define FOR_EACH_COMMAND \
+    X(IRC_UNKNOWN, "") \
     X(INVITE, "%s %s") \
     X(JOIN, "%s") \
     X(KICK, "%s %s :%s") \
@@ -28,24 +29,26 @@
     X(PASS, "%s") \
     X(PONG, "%s") \
     X(PRIVMSG, "%s :%s") \
-    X(TOPIC, "%s %s") \
+    X(TOPIC, "%s") \
     X(USER, "%s 8 * :%s") \
     X(QUIT, "%s")
 
-#define X(n, fmt) n,
+#define X(_n, _fmt) _n,
 enum irc_command {
     FOR_EACH_COMMAND
 };
 #undef X
 
-#define X(n, fmt) [n] = #n,
-static const char * irc_command_name[] = {
+#define paste(_x) #_x
+
+#define X(_n, _fmt) [_n] = paste(_n),
+static const char * irc_command_name [] = {
     FOR_EACH_COMMAND
 };
 #undef X
 
-#define X(n, fmt) [n] = #n " " fmt,
-static const char * irc_command_fmt[] = {
+#define X(_n, _fmt) [_n] = paste(_n) " " _fmt,
+static const char * irc_command_fmt [] = {
     FOR_EACH_COMMAND
 };
 #undef X

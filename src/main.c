@@ -72,7 +72,7 @@ main (void) {
                             // todo: C_CONNECT should be about the same
                             case C_QUERY:
                             case C_JOIN: {
-                                char * token = strtok(user_entry, " \r\n"); // skip "/join"
+                                char * token = strtok(user_entry, " \r\n"); // skip cmd
                                 while ( (token = strtok(NULL, " \r\n")) ) {
                                     chan = new_buffer(token);
                                     if ( st == C_JOIN ) {
@@ -104,6 +104,19 @@ main (void) {
                                 fputs("\r\n", chan->buf.log);
                                 ring_insert(chan->buf.hist, C_MESSAGE, nick, user_entry);
                                 wnoutrefresh(chan->buf.win);
+                                wnoutrefresh(statbar);
+                            } break;
+
+                            case C_TOPIC:
+                            case C_NAMES: {
+                                char * token = strtok(user_entry, " \r\n");
+                                while ( true ) {
+                                    if ( !(token = strtok(NULL, " \r\n")) ) {
+                                        irc_send(fd, builtin_irc[st], chan->name);
+                                    } else {
+                                        irc_send(fd, builtin_irc[st], token);
+                                    } break;
+                                }
                                 wnoutrefresh(statbar);
                             } break;
 

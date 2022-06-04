@@ -5,7 +5,7 @@ ring_init (struct ring ** ring) {
 
     struct ring * r = calloc(1, sizeof(struct ring));
     r->rungs = calloc(LINES - 2, sizeof(char *));
-    for ( size_t i = 0; i < LINES - 2; ++i ) {
+    for ( signed i = 0; i < LINES - 2; ++i ) {
         r->rungs[i] = calloc(IRC_MESSAGE_MAX, sizeof(char));
     }
     r->offset = LINES - 3; // ensures the first insert is at index 0
