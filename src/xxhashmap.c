@@ -40,7 +40,7 @@ xxhashmap_get (xxhashmap * map, char * key) {
 }
 
 void
-xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
+xxhashmap_insert (xxhashmap * map, char * key, FILE * log) {
 
     unsigned idx = hashindex(map->capacity, key);
 
@@ -51,7 +51,6 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
         map->buckets[idx]->name = calloc(keylen, sizeof(char));
         memcpy(map->buckets[idx]->name, key, keylen);
 
-        map->buckets[idx]->buf.win = val;
         map->buckets[idx]->buf.log = log;
         ring_init(&(map->buckets[idx]->buf.hist));
         return;
@@ -69,11 +68,10 @@ xxhashmap_insert (xxhashmap * map, char * key, WINDOW * val, FILE * log) {
 
     // no match
     if ( !node ) {
-        ll_append(last, key, val, log);
+        ll_append(last, key, log);
         return;
     }
 
-    node->buf.win = val;
     node->buf.log = log;
     ring_init(&(node->buf.hist));
 }

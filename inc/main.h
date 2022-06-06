@@ -33,6 +33,7 @@ static char * gecos = "a new client";
 //static char * logpath = "./log";
 
 static struct linked_list * chan;
+static WINDOW * buffer;
 static xxhashmap chanmap;
 static xxhashmap * channels = &chanmap;
 

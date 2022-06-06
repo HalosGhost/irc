@@ -1,7 +1,7 @@
 #include "list.h"
 
 void
-ll_append (struct linked_list * ll, char * key, WINDOW * val, FILE * log) {
+ll_append (struct linked_list * ll, char * key, FILE * log) {
 
     struct linked_list * node;
     ll_init(node);
@@ -10,7 +10,6 @@ ll_append (struct linked_list * ll, char * key, WINDOW * val, FILE * log) {
     node->name = calloc(1, keylen);
     memcpy(node->name, key, keylen);
 
-    node->buf.win = val;
     node->buf.log = log;
     ring_init(&(node->buf.hist));
 

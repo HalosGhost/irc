@@ -25,7 +25,7 @@ void
 xxhashmap_init (xxhashmap *, size_t);
 
 void
-xxhashmap_insert (xxhashmap *, char *, WINDOW *, FILE *);
+xxhashmap_insert (xxhashmap *, char *, FILE *);
 
 bool
 xxhashmap_contains (xxhashmap *, char *);
