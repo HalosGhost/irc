@@ -63,6 +63,7 @@ main (void) {
                         if ( user_entry[0] == '/' && user_entry[1] != '/' ) {
                             st = identify_cmd(user_entry + 1);
                         }
+                        enum irc_command cmd = builtin_irc[st];
 
                         switch ( st ) {
                             case C_QUIT:
@@ -86,9 +87,9 @@ main (void) {
                                 size_t newsize = user_entry_len - 4 + sizeof "ACTION ";
                                 char * tmpmsg = malloc(newsize);
                                 snprintf(tmpmsg, newsize, "ACTION %s", user_entry + sizeof "/me");
-                                irc_send(fd, PRIVMSG, chan->name, tmpmsg);
+                                irc_send(fd, cmd, chan->name, tmpmsg);
                                 fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
-                                fprintf(chan->buf.log, irc_command_fmt[PRIVMSG], chan->name, tmpmsg);
+                                fprintf(chan->buf.log, irc_command_fmt[cmd], chan->name, tmpmsg);
                                 fputs("\r\n", chan->buf.log);
                                 ring_insert(chan->buf.hist, C_ACTION, nick, user_entry + sizeof "/me");
                                 free(tmpmsg);
@@ -97,10 +98,10 @@ main (void) {
                             } break;
 
                             case C_MESSAGE: {
-                                irc_send(fd, PRIVMSG, chan->name, user_entry + (user_entry[0] == '/'));
+                                irc_send(fd, cmd, chan->name, user_entry + (user_entry[0] == '/'));
                                 wprintw(chan->buf.win, "<%s> %s\n", nick, user_entry);
                                 fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
-                                fprintf(chan->buf.log, irc_command_fmt[PRIVMSG], chan->name, user_entry + (user_entry[0] == '/'));
+                                fprintf(chan->buf.log, irc_command_fmt[cmd], chan->name, user_entry + (user_entry[0] == '/'));
                                 fputs("\r\n", chan->buf.log);
                                 ring_insert(chan->buf.hist, C_MESSAGE, nick, user_entry);
                                 wnoutrefresh(chan->buf.win);
@@ -189,6 +190,9 @@ main (void) {
                     memset(user_entry, 0, IRC_MESSAGE_MAX);
                     user_entry_len = 0;
                     break;
+
+                // todo: handle SIGWINCH
+                case KEY_RESIZE: break;
 
                 default:
                     // todo: fix multi-byte grapheme clusters
