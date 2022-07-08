@@ -106,7 +106,7 @@ main (void) {
                                 fprintf(chan->buf.log, ":%s!~%s@localhost ", nick, ident);
                                 fprintf(chan->buf.log, irc_command_fmt[cmd], chan->name, user_entry + (user_entry[0] == '/'));
                                 fputs("\r\n", chan->buf.log);
-                                ring_insert(chan->buf.hist, C_MESSAGE, nick, user_entry);
+                                ring_insert(chan->buf.hist, C_MESSAGE, nick, user_entry + (user_entry[0] == '/'));
                                 wnoutrefresh(buffer);
                                 wnoutrefresh(statbar);
                             } break;
