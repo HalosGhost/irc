@@ -12,7 +12,6 @@ FMFLAGS = -wp -then -wp -wp-rte
 SOURCES ?= $(wildcard src/*.c)
 LIBC = $(shell ldd /usr/bin/env | head -1 | cut -d' ' -f1)
 SANITIZERS ?= -fsanitize=undefined
-CONFIGURATION := release
 
 ifneq ($(CC), tcc)
 CFLAGS += -pie -D_FORTIFY_SOURCE=2 -march=native -mcpu=native
