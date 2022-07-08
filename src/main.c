@@ -20,6 +20,7 @@ main (void) {
     buffer = newwin(LINES - 1, 0, 0, 0);
     scrollok(buffer, true);
 
+    find_logdir();
     struct linked_list * serv = new_buffer(server);
     chan = serv;
 
@@ -295,10 +296,36 @@ main (void) {
         return exit_status;
 }
 
+void
+find_logdir (void) {
+
+    char * xdg = getenv("XDG_DATA_HOME");
+    if ( !logdir[0] && xdg ) {
+        size_t xdg_path_len = snprintf(NULL, 0, "%s/irc/", xdg);
+        snprintf(logdir, PATH_MAX, "%s/irc/", xdg);
+    }
+
+    char * home = getenv("HOME");
+    if ( !logdir[0] && home ) {
+        size_t home_path_len = snprintf(NULL, 0, "%s/.local/share/irc/", home);
+        snprintf(logdir, home_path_len, "%s/.local/share/irc/", home);
+    }
+
+    if ( !logdir[0] ) {
+        snprintf(logdir, PATH_MAX, "./logs/");
+    }
+
+    mkdir(logdir, 0755);
+}
+
 struct linked_list *
 new_buffer (char * key) {
 
-    FILE * log = fopen(key, "a"); // "a+" with fseek dance for scrollback
+    size_t pathlen = snprintf(NULL, 0, "%s/%s", logdir, key) + 1;
+    char * pathname = calloc(pathlen, sizeof(char));
+    snprintf(pathname, pathlen, "%s/%s", logdir, key);
+    FILE * log = fopen(pathname, "a"); // "a+" with fseek dance for scrollback
+    free(pathname);
     setlinebuf(log);
     xxhashmap_insert(channels, key, log);
     return xxhashmap_get(channels, key);

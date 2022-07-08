@@ -13,6 +13,9 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <locale.h>
+#include <limits.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include "xxhashmap.h"
 #include "irc.h"
@@ -29,8 +32,7 @@ static char * nick = "hg-x201";
 static char * ident = "hg-x201";
 static char * gecos = "a new client";
 
-// todo: put logs in a log directory
-//static char * logpath = "./log";
+static char logdir [PATH_MAX + 1];
 
 static struct linked_list * chan;
 static WINDOW * buffer;
@@ -45,6 +47,9 @@ static char * autojoin [] = {
 static char user_entry [IRC_MESSAGE_MAX + 1];
 static unsigned long long last_ping_in_us;
 static const int delay = 14985;
+
+void
+find_logdir (void);
 
 struct linked_list *
 new_buffer (char *);
